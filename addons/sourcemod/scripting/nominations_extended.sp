@@ -36,26 +36,42 @@
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <colors>
+#tryinclude <shavit>
+#tryinclude <kztimer>
+// put try include for surf 
 #pragma semicolon 1
+#pragma newdecls required
 
 #define MCE_VERSION "1.10.0"
 
-public Plugin:myinfo =
+public Plugin myinfo =
 {
 	name = "Map Nominations Extended",
-	author = "Powerlord and AlliedModders LLC",
+	author = "Powerlord and AlliedModders LLC", // mbhound version ( ͡° ͜ʖ ͡°)
 	description = "Provides Map Nominations",
 	version = MCE_VERSION,
 	url = "https://forums.alliedmods.net/showthread.php?t=156974"
 };
 
-new Handle:g_Cvar_ExcludeOld = INVALID_HANDLE;
-new Handle:g_Cvar_ExcludeCurrent = INVALID_HANDLE;
-new Handle:g_Cvar_DisplayName = INVALID_HANDLE;
+Handle g_Cvar_ExcludeOld = INVALID_HANDLE;
+Handle g_Cvar_ExcludeCurrent = INVALID_HANDLE;
+Handle g_Cvar_DisplayName = INVALID_HANDLE;
+Handle g_Cvar_TierMenu = INVALID_HANDLE;
 
-new Handle:g_MapList = INVALID_HANDLE;
-new Handle:g_MapMenu = INVALID_HANDLE;
-new g_mapFileSerial = -1;
+Handle g_MapList = INVALID_HANDLE;
+Handle g_MapMenu = INVALID_HANDLE;
+int g_mapFileSerial = -1;
+
+Menu g_TiersMenu;
+Menu g_Tier1Menu;
+Menu g_Tier2Menu;
+Menu g_Tier3Menu;
+Menu g_Tier4Menu;
+Menu g_Tier5Menu;
+Menu g_Tier6Menu;
+
+bool g_bShavit = false;
+bool g_bKzTimer = false;
 
 #define MAPSTATUS_ENABLED (1<<0)
 #define MAPSTATUS_DISABLED (1<<1)
@@ -63,28 +79,27 @@ new g_mapFileSerial = -1;
 #define MAPSTATUS_EXCLUDE_PREVIOUS (1<<3)
 #define MAPSTATUS_EXCLUDE_NOMINATED (1<<4)
 
-new Handle:g_mapTrie;
+Handle g_mapTrie;
 
 // Nominations Extended Convars
-new Handle:g_Cvar_MarkCustomMaps = INVALID_HANDLE;
+Handle g_Cvar_MarkCustomMaps = INVALID_HANDLE;
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	LoadTranslations("nominations.phrases");
 	LoadTranslations("basetriggers.phrases"); // for Next Map phrase
 	LoadTranslations("mapchooser_extended.phrases");
 	
-	new arraySize = ByteCountToCells(PLATFORM_MAX_PATH);	
+	int arraySize = ByteCountToCells(PLATFORM_MAX_PATH);	
 	g_MapList = CreateArray(arraySize);
 	
 	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
 	g_Cvar_ExcludeCurrent = CreateConVar("sm_nominate_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
 	g_Cvar_DisplayName = CreateConVar("sm_nominate_displayname", "1", "Use custom Display Names instead of the raw map name", 0, true, 0.00, true, 1.0);
-	
-	RegConsoleCmd("say", Command_Say);
-	RegConsoleCmd("say_team", Command_Say);
-	
+	g_Cvar_TierMenu = CreateConVar("smc_tier_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
+
+
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	
 	RegAdminCmd("sm_nominate_addmap", Command_Addmap, ADMFLAG_CHANGEMAP, "sm_nominate_addmap <mapname> - Forces a map to be on the next mapvote.");
@@ -96,13 +111,39 @@ public OnPluginStart()
 	g_mapTrie = CreateTrie();
 }
 
-public OnAllPluginsLoaded()
+public void OnAllPluginsLoaded()
 {
 	// This is an MCE cvar... this plugin requires MCE to be loaded.  Granted, this plugin SHOULD have an MCE dependency.
 	g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");
 }
 
-public OnConfigsExecuted()
+public void OnLibraryAdded(const char[] szName)
+{
+	if (StrEqual(szName, "shavit"))
+	{
+		g_bShavit = true;
+	}
+	if (StrEqual(szName, "KZTimer"))
+	{
+		g_bKzTimer = true;
+	}
+	// Add library for surf 
+}
+
+public void OnLibraryRemoved(const char[] szName)
+{
+	if (StrEqual(szName, "shavit"))
+	{
+		g_bShavit = false;
+	}
+	if (StrEqual(szName, "KZTimer"))
+	{
+		g_bKzTimer = false;
+	}
+	// Add library for surf
+}
+
+public void OnConfigsExecuted()
 {
 	if (ReadMapList(g_MapList,
 					g_mapFileSerial,
@@ -117,12 +158,20 @@ public OnConfigsExecuted()
 	}
 	
 	BuildMapMenu();
+
+	if (GetConVarBool(g_Cvar_TierMenu))
+	{
+		BuildTierMenus();
+	}
 }
 
-public OnNominationRemoved(const String:map[], owner)
+public void OnNominationRemoved(const char[] map, int owner)
 {
-	new status;
-	
+	int status;
+
+	char resolvedMap[PLATFORM_MAX_PATH];
+	FindMap(map, resolvedMap, sizeof(resolvedMap));
+
 	/* Is the map in our list? */
 	if (!GetTrieValue(g_mapTrie, map, status))
 	{
@@ -138,7 +187,7 @@ public OnNominationRemoved(const String:map[], owner)
 	SetTrieValue(g_mapTrie, map, MAPSTATUS_ENABLED);	
 }
 
-stock getMapName(const String:map[], String:mapName[], size)
+stock void getMapName(const char[] map, char[] mapName, int size)
 {
 	if (GetConVarBool(g_Cvar_DisplayName))
 	{
@@ -148,28 +197,36 @@ stock getMapName(const String:map[], String:mapName[], size)
 	strcopy(mapName, size, map);
 }
 
-public Action:Command_Addmap(client, args)
+public Action Command_Addmap(int client, int args)
 {
 	if (args < 1)
 	{
-		CReplyToCommand(client, "[NE] Usage: sm_nominate_addmap <mapname>");
+		CReplyToCommand(client, "[SNK.SRV] Usage: sm_nominate_addmap <mapname>");
 		return Plugin_Handled;
 	}
 	
-	decl String:mapname[PLATFORM_MAX_PATH];
+	char mapname[PLATFORM_MAX_PATH];
+	char resolvedMap[PLATFORM_MAX_PATH];
 	GetCmdArg(1, mapname, sizeof(mapname));
 
-	decl String:mapName[PLATFORM_MAX_PATH];
+	if (FindMap(mapname, resolvedMap, sizeof(resolvedMap)) == FindMap_NotFound)
+	{
+		// We couldn't resolve the map entry to a filename, so...
+		ReplyToCommand(client, "%t", "Map was not found", mapname);
+		return Plugin_Handled;		
+	}
+
+	char mapName[PLATFORM_MAX_PATH];
 	getMapName(mapname, mapName, sizeof(mapName));
 	
-	new status;
+	int status;
 	if (!GetTrieValue(g_mapTrie, mapname, status))
 	{
 		CReplyToCommand(client, "%t", "Map was not found", mapName);
 		return Plugin_Handled;		
 	}
 	
-	new NominateResult:result = NominateMap(mapname, true, 0);
+	NominateResult result = NominateMap(mapname, true, 0);
 	
 	if (result > Nominate_Replaced)
 	{
@@ -178,53 +235,33 @@ public Action:Command_Addmap(client, args)
 		
 		return Plugin_Handled;	
 	}
-	
-	
+
 	SetTrieValue(g_mapTrie, mapname, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
 
-	
 	CReplyToCommand(client, "%t", "Map Inserted", mapName);
 	LogAction(client, -1, "\"%L\" inserted map \"%s\".", client, mapname);
 
 	return Plugin_Handled;		
 }
 
-public Action:Command_Say(client, args)
+public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
 {
 	if (!client)
 	{
-		return Plugin_Continue;
+		return;
 	}
-
-	decl String:text[192];
-	if (!GetCmdArgString(text, sizeof(text)))
+	
+	if (strcmp(sArgs, "nominate", false) == 0)
 	{
-		return Plugin_Continue;
+		ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
+		
+		AttemptNominate(client);
+		
+		SetCmdReplySource(old);
 	}
-	
-	new startidx = 0;
-	if(text[strlen(text)-1] == '"')
-	{
-		text[strlen(text)-1] = '\0';
-		startidx = 1;
-	}
-	
-	new ReplySource:old = SetCmdReplySource(SM_REPLY_TO_CHAT);
-	
-	if (strcmp(text[startidx], "nominate", false) == 0)
-	{
-		if (IsNominateAllowed(client))
-		{
-			AttemptNominate(client);
-		}
-	}
-	
-	SetCmdReplySource(old);
-	
-	return Plugin_Continue;	
 }
 
-public Action:Command_Nominate(client, args)
+public Action Command_Nominate(int client, int args)
 {
 	if (!client || !IsNominateAllowed(client))
 	{
@@ -233,71 +270,134 @@ public Action:Command_Nominate(client, args)
 	
 	if (args == 0)
 	{
-		AttemptNominate(client);
-		return Plugin_Handled;
-	}
-	
-	decl String:mapname[PLATFORM_MAX_PATH];
-	GetCmdArg(1, mapname, sizeof(mapname));
-	
-	new status;
-	if (!GetTrieValue(g_mapTrie, mapname, status))
-	{
-		CReplyToCommand(client, "%t", "Map was not found", mapname);
-		return Plugin_Handled;		
-	}
-	
-	if ((status & MAPSTATUS_DISABLED) == MAPSTATUS_DISABLED)
-	{
-		if ((status & MAPSTATUS_EXCLUDE_CURRENT) == MAPSTATUS_EXCLUDE_CURRENT)
+		if (GetConVarBool(g_Cvar_TierMenu)) 
 		{
-			CReplyToCommand(client, "[NE] %t", "Can't Nominate Current Map");
-		}
-		
-		if ((status & MAPSTATUS_EXCLUDE_PREVIOUS) == MAPSTATUS_EXCLUDE_PREVIOUS)
-		{
-			CReplyToCommand(client, "[NE] %t", "Map in Exclude List");
-		}
-		
-		if ((status & MAPSTATUS_EXCLUDE_NOMINATED) == MAPSTATUS_EXCLUDE_NOMINATED)
-		{
-			CReplyToCommand(client, "[NE] %t", "Map Already Nominated");
-		}
-		
-		return Plugin_Handled;
-	}
-	
-	new NominateResult:result = NominateMap(mapname, false, client);
-	
-	if (result > Nominate_Replaced)
-	{
-		if (result == Nominate_AlreadyInVote)
-		{
-			CReplyToCommand(client, "%t", "Map Already In Vote", mapname);
+			OpenTiersMenu(client);
 		}
 		else
 		{
-			CReplyToCommand(client, "[NE] %t", "Map Already Nominated");
+			AttemptNominate(client);
 		}
-		
-		return Plugin_Handled;	
+		return Plugin_Handled;
 	}
 	
-	/* Map was nominated! - Disable the menu item and update the trie */
-	
-	SetTrieValue(g_mapTrie, mapname, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
-	
-	decl String:mapName[PLATFORM_MAX_PATH];
-	getMapName(mapname, mapName, sizeof(mapName));
-	decl String:name[MAX_NAME_LENGTH];
-	GetClientName(client, name, sizeof(name));
-	PrintToChatAll("[NE] %t", "Map Nominated", name, mapName);
-	LogMessage("%s nominated %s", name, mapname);
+	char mapname[PLATFORM_MAX_PATH];
+	GetCmdArg(1, mapname, sizeof(mapname));
+
+	ShowMatches(client, mapname);
 
 	return Plugin_Continue;
 }
 
-AttemptNominate(client)
+void ShowMatches(int client, char[] mapname) 
+{
+	Menu SubMapMenu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	SetMenuTitle(SubMapMenu, "Nominate Menu\nMaps matching \"%s\"\n ", mapname);
+	SetMenuExitButton(SubMapMenu, true);
+
+	bool isCurrent = false;
+	bool isExclude = false;
+
+	char map[PLATFORM_MAX_PATH];
+	char lastMap[PLATFORM_MAX_PATH];
+
+	Handle excludeMaps = INVALID_HANDLE;
+	char currentMap[32];
+	
+	excludeMaps = CreateArray(ByteCountToCells(PLATFORM_MAX_PATH));
+	GetExcludeMapList(excludeMaps);
+
+	GetCurrentMap(currentMap, sizeof(currentMap));	
+
+	for (int i = 0; i < GetArraySize(g_MapList); i++)
+	{	
+		GetArrayString(g_MapList, i, map, sizeof(map));
+
+		if(StrContains(map, mapname, false) != -1)
+		{
+			if (GetConVarBool(g_Cvar_ExcludeCurrent) && StrEqual(map, currentMap))
+			{
+				isCurrent = true;
+				continue;
+			}
+
+			if (GetConVarBool(g_Cvar_ExcludeOld) && FindStringInArray(excludeMaps, map) != -1)
+			{
+				isExclude = true;
+				continue;
+			}
+
+			if (GetConVarBool(g_Cvar_DisplayName))
+			{
+				char mapName[PLATFORM_MAX_PATH];
+				GetMapName(map, mapName, sizeof(mapName));
+				AddMenuItem(SubMapMenu, map, mapName);
+			}
+			else
+			{
+				AddMenuItem(SubMapMenu, map, map);
+			}
+			strcopy(lastMap, sizeof(map), map);
+		}
+	}
+
+	delete excludeMaps;
+
+	switch (GetMenuItemCount(SubMapMenu)) 
+	{
+    	case 0:
+    	{
+			if (isCurrent) 
+			{
+				CReplyToCommand(client, "[NE] %t", "Can't Nominate Current Map");
+			}
+			else if (isExclude)
+			{
+				CReplyToCommand(client, "[NE] %t", "Map in Exclude List");
+			}
+			else 
+			{
+				CReplyToCommand(client, "%t", "Map was not found", mapname);
+			}
+
+			delete SubMapMenu;
+    	}
+   		case 1:
+   		{
+			NominateResult result = NominateMap(lastMap, false, client);
+	
+			if (result > Nominate_Replaced)
+			{
+				if (result == Nominate_AlreadyInVote)
+				{
+					CReplyToCommand(client, "%t", "Map Already In Vote", lastMap);
+				}
+				else
+				{
+					CReplyToCommand(client, "[NE] %t", "Map Already Nominated");
+				}
+			}
+			else 
+			{
+				SetTrieValue(g_mapTrie, lastMap, MAPSTATUS_DISABLED|MAPSTATUS_EXCLUDE_NOMINATED);
+
+				char name[MAX_NAME_LENGTH];
+				GetClientName(client, name, sizeof(name));
+				PrintToChatAll("[NE] %t", "Map Nominated", name, lastMap);
+				LogMessage("%s nominated %s", name, lastMap);
+			}	
+
+
+			delete SubMapMenu;
+   		}
+   		default: 
+   		{
+			DisplayMenu(SubMapMenu, client, MENU_TIME_FOREVER);   		
+		}
+  	}
+}
+
+void AttemptNominate(int client)
 {
 	SetMenuTitle(g_MapMenu, "%T", "Nominate Title", client);
 	DisplayMenu(g_MapMenu, client, MENU_TIME_FOREVER);
@@ -305,22 +405,28 @@ AttemptNominate(client)
 	return;
 }
 
-BuildMapMenu()
+void OpenTiersMenu(int client)
 {
-	if (g_MapMenu != INVALID_HANDLE)
+	if (GetConVarBool(g_Cvar_TierMenu))
 	{
-		CloseHandle(g_MapMenu);
-		g_MapMenu = INVALID_HANDLE;
+		DisplayMenu(g_TiersMenu, client, MENU_TIME_FOREVER);
 	}
+
+	return;
+}
+
+void BuildMapMenu()
+{
+	delete g_MapMenu;
 	
 	ClearTrie(g_mapTrie);
 	
-	g_MapMenu = CreateMenu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_MapMenu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
 
-	decl String:map[PLATFORM_MAX_PATH];
+	char map[PLATFORM_MAX_PATH];
 	
-	new Handle:excludeMaps = INVALID_HANDLE;
-	decl String:currentMap[32];
+	Handle excludeMaps = INVALID_HANDLE;
+	char currentMap[PLATFORM_MAX_PATH];
 	
 	if (GetConVarBool(g_Cvar_ExcludeOld))
 	{	
@@ -333,13 +439,18 @@ BuildMapMenu()
 		GetCurrentMap(currentMap, sizeof(currentMap));
 	}
 	
-	new bool:DisplayName = GetConVarBool(g_Cvar_DisplayName);
-	for (new i = 0; i < GetArraySize(g_MapList); i++)
+	bool DisplayName = GetConVarBool(g_Cvar_DisplayName);
+	for (int i = 0; i < GetArraySize(g_MapList); i++)
 	{
-		new status = MAPSTATUS_ENABLED;
+		int status = MAPSTATUS_ENABLED;
 		
 		GetArrayString(g_MapList, i, map, sizeof(map));
-		
+
+		FindMap(map, map, sizeof(map));
+
+		char displayName[PLATFORM_MAX_PATH];
+		GetMapDisplayName(map, displayName, sizeof(displayName));
+
 		if (GetConVarBool(g_Cvar_ExcludeCurrent))
 		{
 			if (StrEqual(map, currentMap))
@@ -359,7 +470,7 @@ BuildMapMenu()
 		
 		if (DisplayName)
 		{
-			decl String:mapName[PLATFORM_MAX_PATH];
+			char mapName[PLATFORM_MAX_PATH];
 			GetMapName(map, mapName, sizeof(mapName));
 			AddMenuItem(g_MapMenu, map, mapName);
 		}
@@ -372,37 +483,139 @@ BuildMapMenu()
 	
 	SetMenuExitButton(g_MapMenu, true);
 
-	if (excludeMaps != INVALID_HANDLE)
+	if(GetConVarBool(g_Cvar_TierMenu)) 
 	{
-		CloseHandle(excludeMaps);
+		SetMenuExitBackButton(g_MapMenu, true);
+	}
+
+	delete excludeMaps;
+}
+
+void BuildTiersMenu()
+{
+	delete g_TiersMenu;
+
+	g_TiersMenu = new Menu(TiersMenuHandler);
+	g_TiersMenu.ExitButton = true;
+	
+	g_TiersMenu.SetTitle("Nominate Menu");	
+	g_TiersMenu.AddItem("Alphabetic", "Alphabetic");
+
+	for( int i = 1; i <= 6; ++i )
+	{
+		char tierDisplay[PLATFORM_MAX_PATH + 32];
+		Format(tierDisplay, sizeof(tierDisplay), "Tier %i", i);
+
+		char tierString[PLATFORM_MAX_PATH + 32];
+		Format(tierString, sizeof(tierString), "%i", i);
+		g_TiersMenu.AddItem(tierString, tierDisplay);
 	}
 }
 
-public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
+void BuildTierMenus() 
+{
+	BuildTiersMenu();
+
+	g_Tier1Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_Tier1Menu.SetTitle("Nominate Menu\nTier \"1\" Maps\n ");
+	g_Tier1Menu.ExitBackButton = true;
+	g_Tier2Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_Tier2Menu.SetTitle("Nominate Menu\nTier \"2\" Maps\n ");
+	g_Tier2Menu.ExitBackButton = true;
+	g_Tier3Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_Tier3Menu.SetTitle("Nominate Menu\nTier \"3\" Maps\n ");
+	g_Tier3Menu.ExitBackButton = true;
+	g_Tier4Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_Tier4Menu.SetTitle("Nominate Menu\nTier \"4\" Maps\n ");
+	g_Tier4Menu.ExitBackButton = true;
+	g_Tier5Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_Tier5Menu.SetTitle("Nominate Menu\nTier \"5\" Maps\n ");
+	g_Tier5Menu.ExitBackButton = true;
+	g_Tier6Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+	g_Tier6Menu.SetTitle("Nominate Menu\nTier \"6\" Maps\n ");
+	g_Tier6Menu.ExitBackButton = true;
+
+	char map[PLATFORM_MAX_PATH];
+	
+	bool DisplayName = GetConVarBool(g_Cvar_DisplayName);
+	for (int i = 0; i < GetArraySize(g_MapList); i++)
+	{		
+		GetArrayString(g_MapList, i, map, sizeof(map));
+
+		FindMap(map, map, sizeof(map));
+
+		char displayName[PLATFORM_MAX_PATH];
+		GetMapDisplayName(map, displayName, sizeof(displayName));
+
+		int tier = GetTier(map);
+		
+		if (DisplayName)
+		{
+			char mapName[PLATFORM_MAX_PATH];
+			GetMapName(map, mapName, sizeof(mapName));
+			AddMapToTierMenu(tier, map, mapName);
+		}
+		else
+		{
+			AddMapToTierMenu(tier, map, map);
+		}
+	}
+
+}
+
+void AddMapToTierMenu(int tier, char[] map, char[] mapName)
+{
+	if (tier == 1)
+	{
+		g_Tier1Menu.AddItem(map, mapName);
+	}
+	if (tier == 2)
+	{
+		g_Tier2Menu.AddItem(map, mapName);	
+	}
+	if (tier == 3)
+	{
+		g_Tier3Menu.AddItem(map, mapName);	
+	}
+	if (tier == 4)
+	{
+		g_Tier4Menu.AddItem(map, mapName);	
+	}
+	if (tier == 5)
+	{
+		g_Tier5Menu.AddItem(map, mapName);	
+	}
+	if (tier == 6)
+	{
+		g_Tier6Menu.AddItem(map, mapName);	
+	}
+}
+
+public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
 		case MenuAction_Select:
 		{
-			decl String:map[PLATFORM_MAX_PATH], String:name[MAX_NAME_LENGTH];
+			char map[PLATFORM_MAX_PATH], name[MAX_NAME_LENGTH];
 			GetMenuItem(menu, param2, map, sizeof(map));		
 			
-			decl String:mapName[PLATFORM_MAX_PATH];
+			char mapName[PLATFORM_MAX_PATH];
 			getMapName(map, mapName, sizeof(mapName));
 			
 			GetClientName(param1, name, MAX_NAME_LENGTH);
 	
-			new NominateResult:result = NominateMap(map, false, param1);
+			NominateResult result = NominateMap(map, false, param1);
 			
 			/* Don't need to check for InvalidMap because the menu did that already */
 			if (result == Nominate_AlreadyInVote)
 			{
-				PrintToChat(param1, "[NE] %t", "Map Already Nominated");
+				PrintToChat(param1, "[SNK.SRV] %t", "Map Already Nominated");
 				return 0;
 			}
 			else if (result == Nominate_VoteFull)
 			{
-				PrintToChat(param1, "[NE] %t", "Max Nominations");
+				PrintToChat(param1, "[SNK.SRV] %t", "Max Nominations");
 				return 0;
 			}
 			
@@ -410,20 +623,20 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 
 			if (result == Nominate_Replaced)
 			{
-				PrintToChatAll("[NE] %t", "Map Nomination Changed", name, mapName);
+				PrintToChatAll("[SNK.SRV] %t", "Map Nomination Changed", name, mapName);
 				return 0;	
 			}
 			
-			PrintToChatAll("[NE] %t", "Map Nominated", name, mapName);
+			PrintToChatAll("[SNK.SRV] %t", "Map Nominated", name, mapName);
 			LogMessage("%s nominated %s", name, map);
 		}
 		
 		case MenuAction_DrawItem:
 		{
-			decl String:map[PLATFORM_MAX_PATH];
+			char map[PLATFORM_MAX_PATH];
 			GetMenuItem(menu, param2, map, sizeof(map));
 			
-			new status;
+			int status;
 			
 			if (!GetTrieValue(g_mapTrie, map, status))
 			{
@@ -442,13 +655,13 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 		case MenuAction_DisplayItem:
 		{
-			decl String:map[PLATFORM_MAX_PATH];
+			char map[PLATFORM_MAX_PATH];
 			GetMenuItem(menu, param2, map, sizeof(map));
 			
-			new mark = GetConVarInt(g_Cvar_MarkCustomMaps);
-			new bool:official;
+			int mark = GetConVarInt(g_Cvar_MarkCustomMaps);
+			bool official;
 
-			new status;
+			int status;
 			
 			if (!GetTrieValue(g_mapTrie, map, status))
 			{
@@ -456,8 +669,8 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 				return 0;
 			}
 			
-			decl String:buffer[100];
-			decl String:display[150];
+			char buffer[100];
+			char display[150];
 			
 			if (mark)
 			{
@@ -510,37 +723,126 @@ public Handler_MapSelectMenu(Handle:menu, MenuAction:action, param1, param2)
 			
 			return 0;
 		}
+
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack)
+			{
+				if (GetConVarBool(g_Cvar_TierMenu))
+				{
+					OpenTiersMenu(param1);
+				}
+			}
+		}
+	}
+
+	if (action == MenuAction_End) 
+	{
+		if (menu != g_MapMenu && menu != g_Tier1Menu && menu != g_Tier2Menu && menu != g_Tier3Menu && menu != g_Tier4Menu && menu != g_Tier5Menu && menu != g_Tier6Menu)
+		{
+			delete menu;
+		}
 	}
 	
 	return 0;
 }
 
-stock bool:IsNominateAllowed(client)
+public int TiersMenuHandler(Menu menu, MenuAction action, int client, int param2) 
 {
-	new CanNominateResult:result = CanNominate();
+	if (action == MenuAction_Select) 
+	{
+		char option[PLATFORM_MAX_PATH];
+		menu.GetItem(param2, option, sizeof(option));
+
+		if (StrEqual(option , "Alphabetic")) 
+		{
+			AttemptNominate(client);
+		}
+		else 
+		{
+			int tier = StringToInt(option);
+			if (tier == 1 && GetMenuItemCount(g_Tier1Menu) > 0)
+			{
+				DisplayMenu(g_Tier1Menu, client, MENU_TIME_FOREVER);
+			}
+			if (tier == 2 && GetMenuItemCount(g_Tier2Menu) > 0)
+			{
+				DisplayMenu(g_Tier2Menu, client, MENU_TIME_FOREVER);
+			}
+			if (tier == 3 && GetMenuItemCount(g_Tier3Menu) > 0)
+			{
+				DisplayMenu(g_Tier3Menu, client, MENU_TIME_FOREVER);
+			}
+			if (tier == 4 && GetMenuItemCount(g_Tier4Menu) > 0)
+			{
+				DisplayMenu(g_Tier4Menu, client, MENU_TIME_FOREVER);
+			}
+			if (tier == 5 && GetMenuItemCount(g_Tier5Menu) > 0)
+			{
+				DisplayMenu(g_Tier5Menu, client, MENU_TIME_FOREVER);
+			}
+			if (tier == 6 && GetMenuItemCount(g_Tier6Menu) > 0)
+			{
+				DisplayMenu(g_Tier6Menu, client, MENU_TIME_FOREVER);
+			}
+
+		}
+	}
+}
+
+stock bool IsNominateAllowed(int client)
+{
+	CanNominateResult result = CanNominate();
 	
 	switch(result)
 	{
 		case CanNominate_No_VoteInProgress:
 		{
-			CReplyToCommand(client, "[ME] %t", "Nextmap Voting Started");
+			CReplyToCommand(client, "[SNK.SRV] %t", "Nextmap Voting Started");
 			return false;
 		}
 		
 		case CanNominate_No_VoteComplete:
 		{
-			new String:map[PLATFORM_MAX_PATH];
+			char map[PLATFORM_MAX_PATH];
 			GetNextMap(map, sizeof(map));
-			CReplyToCommand(client, "[NE] %t", "Next Map", map);
+			CReplyToCommand(client, "[SNK.SRV] %t", "Next Map", map);
 			return false;
 		}
 		
 		case CanNominate_No_VoteFull:
 		{
-			CReplyToCommand(client, "[ME] %t", "Max Nominations");
+			CReplyToCommand(client, "[SNK.SRV] %t", "Max Nominations");
 			return false;
 		}
 	}
 	
 	return true;
+}
+
+int GetTier(char[] mapname)
+{
+	int tier = 0;
+	if (g_bShavit) 
+	{
+		char mapdisplay[PLATFORM_MAX_PATH + 32];
+		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));
+		tier = Shavit_GetMapTier(mapdisplay);
+	}
+	else if (g_bKzTimer)
+	{
+		// idk how to do this
+	}
+	// put else if for surf
+
+	if (tier < 1) 
+	{
+		tier = 1;
+	}
+	else if (tier > 6)
+	{
+		tier = 6;
+	}
+
+	return tier;
 }

@@ -38,7 +38,7 @@
 #include <colors>
 #tryinclude <shavit>
 #tryinclude <kztimer>
-// put try include for surf 
+#tryinclude <surftimer>
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -56,22 +56,21 @@ public Plugin myinfo =
 Handle g_Cvar_ExcludeOld = INVALID_HANDLE;
 Handle g_Cvar_ExcludeCurrent = INVALID_HANDLE;
 Handle g_Cvar_DisplayName = INVALID_HANDLE;
-Handle g_Cvar_TierMenu = INVALID_HANDLE;
+Handle g_Cvar_EnhancedMenu = INVALID_HANDLE;
+
+ConVar g_Cvar_MinTier;
+ConVar g_Cvar_MaxTier;
 
 Handle g_MapList = INVALID_HANDLE;
 Handle g_MapMenu = INVALID_HANDLE;
 int g_mapFileSerial = -1;
 
-Menu g_TiersMenu;
-Menu g_Tier1Menu;
-Menu g_Tier2Menu;
-Menu g_Tier3Menu;
-Menu g_Tier4Menu;
-Menu g_Tier5Menu;
-Menu g_Tier6Menu;
+Menu g_EnhancedMenu;
+ArrayList g_aTierMenus;
 
-bool g_bShavit = false;
+bool g_bBhopTimer = false;
 bool g_bKzTimer = false;
+bool g_bSurfTimer = false;
 
 #define MAPSTATUS_ENABLED (1<<0)
 #define MAPSTATUS_DISABLED (1<<1)
@@ -93,12 +92,14 @@ public void OnPluginStart()
 	
 	int arraySize = ByteCountToCells(PLATFORM_MAX_PATH);	
 	g_MapList = CreateArray(arraySize);
+	g_aTierMenus = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
 	
 	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
 	g_Cvar_ExcludeCurrent = CreateConVar("sm_nominate_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
 	g_Cvar_DisplayName = CreateConVar("sm_nominate_displayname", "1", "Use custom Display Names instead of the raw map name", 0, true, 0.00, true, 1.0);
-	g_Cvar_TierMenu = CreateConVar("smc_tier_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
-
+	g_Cvar_EnhancedMenu = CreateConVar("smc_enhanced_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
+	g_Cvar_MinTier = CreateConVar("smc_min_tier", "1", "The minimum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
+	g_Cvar_MaxTier = CreateConVar("smc_max_tier", "6", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
 
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	
@@ -121,26 +122,32 @@ public void OnLibraryAdded(const char[] szName)
 {
 	if (StrEqual(szName, "shavit"))
 	{
-		g_bShavit = true;
+		g_bBhopTimer = true;
 	}
 	if (StrEqual(szName, "KZTimer"))
 	{
 		g_bKzTimer = true;
 	}
-	// Add library for surf 
+	if (StrEqual(szName, "surftimer"))
+	{
+		g_bSurfTimer = true;
+	}
 }
 
 public void OnLibraryRemoved(const char[] szName)
 {
 	if (StrEqual(szName, "shavit"))
 	{
-		g_bShavit = false;
+		g_bBhopTimer = false;
 	}
 	if (StrEqual(szName, "KZTimer"))
 	{
 		g_bKzTimer = false;
 	}
-	// Add library for surf
+	if (StrEqual(szName, "surftimer"))
+	{
+		g_bSurfTimer = false;
+	}
 }
 
 public void OnConfigsExecuted()
@@ -159,7 +166,7 @@ public void OnConfigsExecuted()
 	
 	BuildMapMenu();
 
-	if (GetConVarBool(g_Cvar_TierMenu))
+	if (GetConVarBool(g_Cvar_EnhancedMenu))
 	{
 		BuildTierMenus();
 	}
@@ -270,7 +277,7 @@ public Action Command_Nominate(int client, int args)
 	
 	if (args == 0)
 	{
-		if (GetConVarBool(g_Cvar_TierMenu)) 
+		if (GetConVarBool(g_Cvar_EnhancedMenu)) 
 		{
 			OpenTiersMenu(client);
 		}
@@ -407,9 +414,9 @@ void AttemptNominate(int client)
 
 void OpenTiersMenu(int client)
 {
-	if (GetConVarBool(g_Cvar_TierMenu))
+	if (GetConVarBool(g_Cvar_EnhancedMenu))
 	{
-		DisplayMenu(g_TiersMenu, client, MENU_TIME_FOREVER);
+		DisplayMenu(g_EnhancedMenu, client, MENU_TIME_FOREVER);
 	}
 
 	return;
@@ -483,7 +490,7 @@ void BuildMapMenu()
 	
 	SetMenuExitButton(g_MapMenu, true);
 
-	if(GetConVarBool(g_Cvar_TierMenu)) 
+	if(GetConVarBool(g_Cvar_EnhancedMenu)) 
 	{
 		SetMenuExitBackButton(g_MapMenu, true);
 	}
@@ -491,49 +498,48 @@ void BuildMapMenu()
 	delete excludeMaps;
 }
 
-void BuildTiersMenu()
+void BuildEnhancedMenu()
 {
-	delete g_TiersMenu;
+	delete g_EnhancedMenu;
 
-	g_TiersMenu = new Menu(TiersMenuHandler);
-	g_TiersMenu.ExitButton = true;
+	g_EnhancedMenu = new Menu(TiersMenuHandler);
+	g_EnhancedMenu.ExitButton = true;
 	
-	g_TiersMenu.SetTitle("Nominate Menu");	
-	g_TiersMenu.AddItem("Alphabetic", "Alphabetic");
+	g_EnhancedMenu.SetTitle("Nominate Menu");	
+	g_EnhancedMenu.AddItem("Alphabetic", "Alphabetic");
 
-	for( int i = 1; i <= 6; ++i )
+	int min = GetConVarInt(g_Cvar_MinTier);
+	int max = GetConVarInt(g_Cvar_MaxTier);
+
+	for( int i = min; i <= max; ++i )
 	{
-		char tierDisplay[PLATFORM_MAX_PATH + 32];
-		Format(tierDisplay, sizeof(tierDisplay), "Tier %i", i);
+		if (GetMenuItemCount(g_aTierMenus.Get(i-min)) > 0) 
+		{
+			char tierDisplay[PLATFORM_MAX_PATH + 32];
+			Format(tierDisplay, sizeof(tierDisplay), "Tier %i", i);
 
-		char tierString[PLATFORM_MAX_PATH + 32];
-		Format(tierString, sizeof(tierString), "%i", i);
-		g_TiersMenu.AddItem(tierString, tierDisplay);
+			char tierString[PLATFORM_MAX_PATH + 32];
+			Format(tierString, sizeof(tierString), "%i", i);
+			g_EnhancedMenu.AddItem(tierString, tierDisplay);
+		}
 	}
 }
 
 void BuildTierMenus() 
 {
-	BuildTiersMenu();
+	int min = GetConVarInt(g_Cvar_MinTier);
+	int max = GetConVarInt(g_Cvar_MaxTier);
 
-	g_Tier1Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-	g_Tier1Menu.SetTitle("Nominate Menu\nTier \"1\" Maps\n ");
-	g_Tier1Menu.ExitBackButton = true;
-	g_Tier2Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-	g_Tier2Menu.SetTitle("Nominate Menu\nTier \"2\" Maps\n ");
-	g_Tier2Menu.ExitBackButton = true;
-	g_Tier3Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-	g_Tier3Menu.SetTitle("Nominate Menu\nTier \"3\" Maps\n ");
-	g_Tier3Menu.ExitBackButton = true;
-	g_Tier4Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-	g_Tier4Menu.SetTitle("Nominate Menu\nTier \"4\" Maps\n ");
-	g_Tier4Menu.ExitBackButton = true;
-	g_Tier5Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-	g_Tier5Menu.SetTitle("Nominate Menu\nTier \"5\" Maps\n ");
-	g_Tier5Menu.ExitBackButton = true;
-	g_Tier6Menu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-	g_Tier6Menu.SetTitle("Nominate Menu\nTier \"6\" Maps\n ");
-	g_Tier6Menu.ExitBackButton = true;
+	if (max < min)
+	{
+		int temp = max;
+		max = min;
+		min = temp;
+		SetConVarInt(g_Cvar_MinTier, min);
+		SetConVarInt(g_Cvar_MaxTier, max);
+	}
+
+	InitTierMenus(min,max);
 
 	char map[PLATFORM_MAX_PATH];
 	
@@ -561,33 +567,28 @@ void BuildTierMenus()
 		}
 	}
 
+	BuildEnhancedMenu();
+}
+
+void InitTierMenus(int min, int max) 
+{
+	g_aTierMenus.Clear();
+
+	for(int i = min; i <= max; i++)
+	{
+		Menu TierMenu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
+		TierMenu.SetTitle("Nominate Menu\nTier \"%i\" Maps\n ", i);
+		TierMenu.ExitBackButton = true;
+
+		g_aTierMenus.Push(TierMenu);
+	}
 }
 
 void AddMapToTierMenu(int tier, char[] map, char[] mapName)
 {
-	if (tier == 1)
+	if (GetConVarInt(g_Cvar_MinTier) <= tier <= GetConVarInt(g_Cvar_MaxTier))
 	{
-		g_Tier1Menu.AddItem(map, mapName);
-	}
-	if (tier == 2)
-	{
-		g_Tier2Menu.AddItem(map, mapName);	
-	}
-	if (tier == 3)
-	{
-		g_Tier3Menu.AddItem(map, mapName);	
-	}
-	if (tier == 4)
-	{
-		g_Tier4Menu.AddItem(map, mapName);	
-	}
-	if (tier == 5)
-	{
-		g_Tier5Menu.AddItem(map, mapName);	
-	}
-	if (tier == 6)
-	{
-		g_Tier6Menu.AddItem(map, mapName);	
+		AddMenuItem(g_aTierMenus.Get(tier-GetConVarInt(g_Cvar_MinTier)), map, mapName);	
 	}
 }
 
@@ -728,7 +729,7 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 		{
 			if (param2 == MenuCancel_ExitBack)
 			{
-				if (GetConVarBool(g_Cvar_TierMenu))
+				if (GetConVarBool(g_Cvar_EnhancedMenu))
 				{
 					OpenTiersMenu(param1);
 				}
@@ -738,7 +739,7 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 
 	if (action == MenuAction_End) 
 	{
-		if (menu != g_MapMenu && menu != g_Tier1Menu && menu != g_Tier2Menu && menu != g_Tier3Menu && menu != g_Tier4Menu && menu != g_Tier5Menu && menu != g_Tier6Menu)
+		if (menu != g_MapMenu && FindValueInArray(g_aTierMenus, menu) == -1)
 		{
 			delete menu;
 		}
@@ -760,32 +761,7 @@ public int TiersMenuHandler(Menu menu, MenuAction action, int client, int param2
 		}
 		else 
 		{
-			int tier = StringToInt(option);
-			if (tier == 1 && GetMenuItemCount(g_Tier1Menu) > 0)
-			{
-				DisplayMenu(g_Tier1Menu, client, MENU_TIME_FOREVER);
-			}
-			if (tier == 2 && GetMenuItemCount(g_Tier2Menu) > 0)
-			{
-				DisplayMenu(g_Tier2Menu, client, MENU_TIME_FOREVER);
-			}
-			if (tier == 3 && GetMenuItemCount(g_Tier3Menu) > 0)
-			{
-				DisplayMenu(g_Tier3Menu, client, MENU_TIME_FOREVER);
-			}
-			if (tier == 4 && GetMenuItemCount(g_Tier4Menu) > 0)
-			{
-				DisplayMenu(g_Tier4Menu, client, MENU_TIME_FOREVER);
-			}
-			if (tier == 5 && GetMenuItemCount(g_Tier5Menu) > 0)
-			{
-				DisplayMenu(g_Tier5Menu, client, MENU_TIME_FOREVER);
-			}
-			if (tier == 6 && GetMenuItemCount(g_Tier6Menu) > 0)
-			{
-				DisplayMenu(g_Tier6Menu, client, MENU_TIME_FOREVER);
-			}
-
+			DisplayMenu(g_aTierMenus.Get(StringToInt(option)-GetConVarInt(g_Cvar_MinTier)), client, MENU_TIME_FOREVER);
 		}
 	}
 }
@@ -823,25 +799,63 @@ stock bool IsNominateAllowed(int client)
 int GetTier(char[] mapname)
 {
 	int tier = 0;
-	if (g_bShavit) 
+	if (g_bBhopTimer) 
 	{
 		char mapdisplay[PLATFORM_MAX_PATH + 32];
 		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
-	else if (g_bKzTimer)
+	else if (!g_bKzTimer)
 	{
-		// idk how to do this
-	}
-	// put else if for surf
 
-	if (tier < 1) 
-	{
-		tier = 1;
 	}
-	else if (tier > 6)
+	else if (!g_bSurfTimer)
 	{
-		tier = 6;
+
+	}
+	else if (GetConVarBool(g_Cvar_DisplayName))
+	{
+		char mapDisplay[PLATFORM_MAX_PATH];
+		GetMapName(mapname, mapDisplay, sizeof(mapDisplay));
+
+		int length = strlen(mapDisplay);
+		tier = -1;
+		for (int i = length - 1; i >= 0; i-- )
+		{
+			char c = mapDisplay[i];
+			if (c < '0' || c > '9')
+			{ 
+				continue;
+			}
+			else
+			{
+				tier = (c - '0');
+				if (i > 0)
+				{
+					char d = mapDisplay[i-1];
+					if (d < '0' || d > '9')
+					{
+						break;
+					}
+					else 
+					{
+						tier = (d - '0') * 10 + tier; 
+					}
+				}
+				break;
+			}
+		}
+	}
+
+
+
+	if (tier < GetConVarInt(g_Cvar_MinTier)) 
+	{
+		tier = GetConVarInt(g_Cvar_MinTier);
+	}
+	else if (tier > GetConVarInt(g_Cvar_MaxTier))
+	{
+		tier = GetConVarInt(g_Cvar_MaxTier);
 	}
 
 	return tier;

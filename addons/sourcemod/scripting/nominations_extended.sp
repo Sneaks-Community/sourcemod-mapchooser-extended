@@ -36,6 +36,7 @@
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <colors>
+#undef REQUIRE_PLUGIN
 #tryinclude <shavit>
 #tryinclude <kztimer>
 #tryinclude <surftimer>

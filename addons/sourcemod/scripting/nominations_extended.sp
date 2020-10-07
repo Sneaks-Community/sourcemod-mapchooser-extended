@@ -392,7 +392,7 @@ void ShowMatches(int client, char[] mapname)
 				char name[MAX_NAME_LENGTH];
 				GetClientName(client, name, sizeof(name));
 				PrintToChatAll("[NE] %t", "Map Nominated", name, lastMap);
-				LogMessage("%s nominated %s", name, lastMap);
+				LogMessage("\"%L\" nominated %s", client, lastMap);
 			}	
 
 
@@ -630,7 +630,7 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 			}
 			
 			PrintToChatAll("[SNK.SRV] %t", "Map Nominated", name, mapName);
-			LogMessage("%s nominated %s", name, map);
+			LogMessage("\"%L\" nominated %s", param1, map);
 		}
 		
 		case MenuAction_DrawItem:

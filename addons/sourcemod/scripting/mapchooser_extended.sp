@@ -604,7 +604,7 @@ public Action Timer_StartWarningTimer(Handle timer)
 
 public Action Timer_StartMapVote(Handle timer, Handle data)
 {
-	int timePassed;
+	static int timePassed;
 
 	// This is still necessary because InitiateVote still calls this directly via the retry timer
 	if (!g_MapList.Length || !g_Cvar_EndOfMapVote.BoolValue || g_MapVoteCompleted || g_HasVoteStarted)

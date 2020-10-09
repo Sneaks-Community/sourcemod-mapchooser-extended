@@ -1486,7 +1486,7 @@ public int Handler_MapVoteMenu(Menu menu, MenuAction action, int param1, int par
 				SetNextMap(map);
 				g_MapVoteCompleted = true;
 			}
-			else if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 2 && GetClientCount() > g_Cvar_NoVoteModeMinPlayers.IntValue)
+			else if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 2 && GetClientCount() >= g_Cvar_NoVoteModeMinPlayers.IntValue)
 			{
 				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
 				CPrintToChatAll("%s%t", g_szChatPrefix, "No Vote Extend", g_Cvar_ExtendTimeStep.IntValue);

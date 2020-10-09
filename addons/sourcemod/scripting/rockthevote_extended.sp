@@ -60,6 +60,7 @@ ConVar g_Cvar_Interval;
 ConVar g_Cvar_ChangeTime;
 ConVar g_Cvar_RTVPostVoteAction;
 ConVar g_Cvar_DisplayName;
+ConVar g_Cvar_ChatPrefix;
 
 bool g_CanRTV = false;		// True if RTV loaded maps and is active.
 bool g_RTVAllowed = false;	// True if RTV is available to players. Used to delay rtv votes.
@@ -69,6 +70,8 @@ int g_VotesNeeded = 0;			// Necessary votes before map vote begins. (voters * pe
 bool g_Voted[MAXPLAYERS+1] = {false, ...};
 
 bool g_InChange = false;
+
+char g_szChatPrefix[128];
 
 public void OnPluginStart()
 {
@@ -83,6 +86,7 @@ public void OnPluginStart()
 	g_Cvar_ChangeTime = CreateConVar("sm_rtv_changetime", "0", "When to change the map after a succesful RTV: 0 - Instant, 1 - RoundEnd, 2 - MapEnd", _, true, 0.0, true, 2.0);
 	g_Cvar_RTVPostVoteAction = CreateConVar("sm_rtv_postvoteaction", "0", "What to do with RTV's after a mapvote has completed. 0 - Allow, success = instant change, 1 - Deny", _, true, 0.0, true, 1.0);
 	g_Cvar_DisplayName = CreateConVar("sm_rtv_displayname", "1", "Display the Map's custom name, instead of the raw map name", _, true, 0.0, true, 1.0);
+	g_Cvar_ChatPrefix = CreateConVar("sm_rtv_chatprefix", "[SNK.SRV] ", "Chat prefix for all RTV related messages");
 	
 	RegConsoleCmd("sm_rtv", Command_RTV);
 	
@@ -127,6 +131,17 @@ public void OnConfigsExecuted()
 	g_CanRTV = true;
 	g_RTVAllowed = false;
 	CreateTimer(g_Cvar_InitialDelay.FloatValue, Timer_DelayRTV, _, TIMER_FLAG_NO_MAPCHANGE);
+	
+	GetConVarString(g_Cvar_ChatPrefix, g_szChatPrefix, sizeof(g_szChatPrefix));
+	HookConVarChange(g_Cvar_ChatPrefix, OnSettingsChanged);
+}
+
+public void OnSettingsChanged(Handle convar, const char[] oldValue, const char[] newValue)
+{
+	if (convar == g_Cvar_ChatPrefix)
+	{
+		GetConVarString(g_Cvar_ChatPrefix, g_szChatPrefix, sizeof(g_szChatPrefix));
+	}
 }
 
 public void OnClientConnected(int client)
@@ -208,25 +223,25 @@ void AttemptRTV(int client)
 {
 	if (!g_RTVAllowed  || (g_Cvar_RTVPostVoteAction.IntValue == 1 && HasEndOfMapVoteFinished()))
 	{
-		CReplyToCommand(client, "[SNK.SRV] %t", "RTV Not Allowed");
+		CReplyToCommand(client, "%s%t", g_szChatPrefix, "RTV Not Allowed");
 		return;
 	}
 		
 	if (!CanMapChooserStartVote())
 	{
-		CReplyToCommand(client, "[SNK.SRV] %t", "RTV Started");
+		CReplyToCommand(client, "%s%t", g_szChatPrefix, "RTV Started");
 		return;
 	}
 	
 	if (GetClientCount(true) < g_Cvar_MinPlayers.IntValue)
 	{
-		CReplyToCommand(client, "[SNK.SRV] %t", "Minimal Players Not Met");
+		CReplyToCommand(client, "%s%t", g_szChatPrefix, "Minimal Players Not Met");
 		return;			
 	}
 	
 	if (g_Voted[client])
 	{
-		CReplyToCommand(client, "[SNK.SRV] %t", "Already Voted", g_Votes, g_VotesNeeded);
+		CReplyToCommand(client, "%s%t", g_szChatPrefix, "Already Voted", g_Votes, g_VotesNeeded);
 		return;
 	}
 
@@ -236,7 +251,7 @@ void AttemptRTV(int client)
 	g_Votes++;
 	g_Voted[client] = true;
 
-	CPrintToChatAll("[SNK.SRV] %t", "RTV Requested", name, g_Votes, g_VotesNeeded);
+	CPrintToChatAll("%s%t", "RTV Requested", g_szChatPrefix, name, g_Votes, g_VotesNeeded);
 
 	if (g_Votes >= g_VotesNeeded)
 	{
@@ -266,11 +281,11 @@ void StartRTV()
 			{
 				char mapName[PLATFORM_MAX_PATH];
 				GetMapName(map, mapName, sizeof(mapName));
-				CPrintToChatAll("[SNK.SRV] %t", "Changing Maps", mapName);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "Changing Maps", mapName);
 			}
 			else
 			{
-				CPrintToChatAll("[SNK.SRV] %t", "Changing Maps", map);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "Changing Maps", map);
 			}
 			CreateTimer(5.0, Timer_ChangeMap, _, TIMER_FLAG_NO_MAPCHANGE);
 			g_InChange = true;
@@ -328,7 +343,7 @@ public Action Command_ForceRTV(int client, int args)
 		return Plugin_Handled;
 	}
 
-	ShowActivity2(client, "[SNK.SRV] ", "%t", "Initiated Vote Map");
+	ShowActivity2(client, "%s", "%t", g_szChatPrefix, "Initiated Vote Map");
 
 	StartRTV();
 	

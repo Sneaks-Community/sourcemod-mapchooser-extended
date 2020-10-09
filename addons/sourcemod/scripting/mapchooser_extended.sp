@@ -107,6 +107,7 @@ ConVar g_Cvar_ExtendFragStep;
 ConVar g_Cvar_ExcludeMaps;
 ConVar g_Cvar_IncludeMaps;
 ConVar g_Cvar_NoVoteMode;
+ConVar g_Cvar_NoVoteModeMinPlayers;
 ConVar g_Cvar_Extend;
 ConVar g_Cvar_DontChange;
 ConVar g_Cvar_EndOfMapVote;
@@ -235,7 +236,8 @@ public void OnPluginStart()
 	g_Cvar_ExtendFragStep = CreateConVar("mce_extend_fragstep", "10", "Specifies how many more frags are allowed when map is extended.", _, true, 5.0);	
 	g_Cvar_ExcludeMaps = CreateConVar("mce_exclude", "5", "Specifies how many past maps to exclude from the vote.", _, true, 0.0);
 	g_Cvar_IncludeMaps = CreateConVar("mce_include", "5", "Specifies how many maps to include in the vote.", _, true, 2.0, true, 6.0);
-	g_Cvar_NoVoteMode = CreateConVar("mce_novote", "1", "Specifies whether or not MapChooser should pick a map if no votes are received.", _, true, 0.0, true, 1.0);
+	g_Cvar_NoVoteMode = CreateConVar("mce_novote", "1", "Specifies if MapChooser should pick a map (1), extend (2), or do nothing (0) if no votes are received.", _, true, 0.0, true, 2.0);
+	g_Cvar_NoVoteModeMinPlayers = CreateConVar("mce_novote_minplayers", "0", "Specifies the minimum number of players to extend map if no votes are received (requires mce_novote 2)", _, true, 0.0, true, 64.0);
 	g_Cvar_Extend = CreateConVar("mce_extend", "0", "Number of extensions allowed each map.", _, true, 0.0);
 	g_Cvar_DontChange = CreateConVar("mce_dontchange", "1", "Specifies if a 'Don't Change' option should be added to early votes", _, true, 0.0);
 	g_Cvar_VoteDuration = CreateConVar("mce_voteduration", "20", "Specifies how long the mapvote should be available for.", _, true, 5.0);
@@ -1233,7 +1235,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 		{
 			if (time > 0)
 			{
-				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);				
+				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
 			}
 		}
 		
@@ -1454,7 +1456,7 @@ public int Handler_MapVoteMenu(Menu menu, MenuAction action, int param1, int par
 		case MenuAction_VoteCancel:
 		{
 			// If we receive 0 votes, pick at random.
-			if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.BoolValue)
+			if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 1)
 			{
 				int count;
 				count = GetMenuItemCount(menu);
@@ -1483,6 +1485,11 @@ public int Handler_MapVoteMenu(Menu menu, MenuAction action, int param1, int par
 				
 				SetNextMap(map);
 				g_MapVoteCompleted = true;
+			}
+			else if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 2 && GetClientCount() > g_Cvar_NoVoteModeMinPlayers.IntValue)
+			{
+				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "No Vote Extend", g_Cvar_ExtendTimeStep.IntValue);
 			}
 			else
 			{

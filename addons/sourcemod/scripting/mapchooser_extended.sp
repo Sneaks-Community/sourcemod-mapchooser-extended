@@ -160,6 +160,7 @@ ConVar g_Cvar_MarkCustomMaps;
 ConVar g_Cvar_RandomizeNominations;
 ConVar g_Cvar_HideTimer;
 ConVar g_Cvar_NoVoteOption;
+ConVar g_Cvar_ChatPrefix;
 
 /* Mapchooser Extended Data Handles */
 Handle g_OfficialList = INVALID_HANDLE;
@@ -177,6 +178,7 @@ int g_mapOfficialFileSerial = -1;
 char g_GameModName[64];
 bool g_WarningInProgress = false;
 bool g_AddNoVote = false;
+char g_szChatPrefix[128];
 
 EngineVersion g_Version;
 
@@ -257,6 +259,7 @@ public void OnPluginStart()
 	g_Cvar_RandomizeNominations = CreateConVar("mce_randomizeorder", "0", "Randomize map order?", _, true, 0.0, true, 1.0);
 	g_Cvar_HideTimer = CreateConVar("mce_hidetimer", "0", "Hide the MapChooser Extended warning timer", _, true, 0.0, true, 1.0);
 	g_Cvar_NoVoteOption = CreateConVar("mce_addnovote", "1", "Add \"No Vote\" to vote menu?", _, true, 0.0, true, 1.0);
+	g_Cvar_ChatPrefix = CreateConVar("mce_chatprefix", "[SNK.SRV] ", "Chat prefix for all MCE related messages");
 
 	RegAdminCmd("sm_mapvote", Command_Mapvote, ADMFLAG_CHANGEMAP, "sm_mapvote - Forces MapChooser to attempt to run a map vote now.");
 	RegAdminCmd("sm_setnextmap", Command_SetNextmap, ADMFLAG_CHANGEMAP, "sm_setnextmap <map>");
@@ -466,6 +469,17 @@ public void OnConfigsExecuted()
 	
 	InitializeOfficialMapList();
 	InitializeMapNames();
+	
+	GetConVarString(g_Cvar_ChatPrefix, g_szChatPrefix, sizeof(g_szChatPrefix));
+	HookConVarChange(g_Cvar_ChatPrefix, OnSettingsChanged);
+}
+
+public void OnSettingsChanged(Handle convar, const char[] oldValue, const char[] newValue)
+{
+	if (convar == g_Cvar_ChatPrefix)
+	{
+		GetConVarString(g_Cvar_ChatPrefix, g_szChatPrefix, sizeof(g_szChatPrefix));
+	}
 }
 
 public void OnMapEnd()
@@ -516,7 +530,7 @@ public Action Command_SetNextmap(int client, int args)
 {
 	if (args < 1)
 	{
-		CReplyToCommand(client, "[SNK.SRV] Usage: sm_setnextmap <map>");
+		CReplyToCommand(client, "%sUsage: sm_setnextmap <map>", g_szChatPrefix);
 		return Plugin_Handled;
 	}
 
@@ -525,7 +539,7 @@ public Action Command_SetNextmap(int client, int args)
 
 	if (!IsMapValid(map))
 	{
-		CReplyToCommand(client, "[SNK.SRV] %t", "Map was not found", map);
+		CReplyToCommand(client, "%s%t", g_szChatPrefix, "Map was not found", map);
 		return Plugin_Handled;
 	}
 
@@ -916,7 +930,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
 public Action Command_Mapvote(int client, int args)
 {
-	ShowActivity2(client, "[SNK.SRV] ", "%t", "Initiated Vote Map");
+	ShowActivity2(client, "%s", "%t", g_szChatPrefix, "Initiated Vote Map");
 
 	SetupWarningTimer(WarningType_Vote, MapChange_MapEnd, INVALID_HANDLE, true);
 
@@ -941,7 +955,7 @@ void InitiateVote(MapChange when, Handle inputlist=INVALID_HANDLE)
 		// Can't start a vote, try again in 5 seconds.
 		//g_RetryTimer = CreateTimer(5.0, Timer_StartMapVote, _, TIMER_FLAG_NO_MAPCHANGE);
 		
-		CPrintToChatAll("[SNK.SRV] %t", "Cannot Start Vote", FAILURE_TIMER_LENGTH);
+		CPrintToChatAll("%s%t", g_szChatPrefix, "Cannot Start Vote", FAILURE_TIMER_LENGTH);
 		Handle data;
 		g_RetryTimer = CreateDataTimer(1.0, Timer_StartMapVote, data, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 		
@@ -1198,7 +1212,7 @@ void InitiateVote(MapChange when, Handle inputlist=INVALID_HANDLE)
 	Call_Finish();
 
 	LogAction(-1, -1, "Voting for next map has started.");
-	CPrintToChatAll("[SNK.SRV] %t", "Nextmap Voting Started");
+	CPrintToChatAll("%s%t", g_szChatPrefix, "Nextmap Voting Started");
 }
 
 public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
@@ -1250,7 +1264,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 			}
 		}
 
-		CPrintToChatAll("[SNK.SRV] %t", "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		CPrintToChatAll("%s%t", g_szChatPrefix, "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
 		
 		// We extended, so we'll have to vote again.
@@ -1261,7 +1275,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 	}
 	else if (strcmp(map, VOTE_DONTCHANGE, false) == 0)
 	{
-		CPrintToChatAll("[SNK.SRV] %t", "Current Map Stays", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		CPrintToChatAll("%s%t", g_szChatPrefix, "Current Map Stays", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. 'No Change' was the winner");
 		
 		g_HasVoteStarted = false;
@@ -1293,7 +1307,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 		
 		char mapName[PLATFORM_MAX_PATH];
 		getMapName(map, mapName, sizeof(mapName));
-		CPrintToChatAll("[SNK.SRV] %t", "Nextmap Voting Finished", mapName, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
+		CPrintToChatAll("%s%t", g_szChatPrefix, "Nextmap Voting Finished", mapName, RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. Nextmap: %s.", map);
 	}	
 }
@@ -1331,7 +1345,7 @@ public void Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients,
 				}
 			}
 
-			CPrintToChatAll("[SNK.SRV] %t", "Tie Vote", GetArraySize(mapList));
+			CPrintToChatAll("%s%t", g_szChatPrefix, "Tie Vote", GetArraySize(mapList));
 			SetupWarningTimer(WarningType_Revote, view_as<MapChange>(g_ChangeTime), mapList);
 			return;
 		}
@@ -1363,7 +1377,7 @@ public void Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients,
 				}
 			}
 			
-			CPrintToChatAll("[SNK.SRV] %t", "Revote Is Needed", required_percent);
+			CPrintToChatAll("%s%t", g_szChatPrefix, "Revote Is Needed", required_percent);
 			SetupWarningTimer(WarningType_Revote, view_as<MapChange>(g_ChangeTime), mapList);
 			return;
 		}

@@ -61,6 +61,7 @@ Handle g_Cvar_EnhancedMenu = INVALID_HANDLE;
 
 ConVar g_Cvar_MinTier;
 ConVar g_Cvar_MaxTier;
+ConVar g_Cvar_ChatPrefix;
 
 Handle g_MapList = INVALID_HANDLE;
 Handle g_MapMenu = INVALID_HANDLE;
@@ -68,6 +69,8 @@ int g_mapFileSerial = -1;
 
 Menu g_EnhancedMenu;
 ArrayList g_aTierMenus;
+
+char g_szChatPrefix[128];
 
 bool g_bBhopTimer = false;
 bool g_bKzTimer = false;
@@ -101,6 +104,7 @@ public void OnPluginStart()
 	g_Cvar_EnhancedMenu = CreateConVar("smc_enhanced_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
 	g_Cvar_MinTier = CreateConVar("smc_min_tier", "1", "The minimum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
 	g_Cvar_MaxTier = CreateConVar("smc_max_tier", "6", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
+	g_Cvar_ChatPrefix = CreateConVar("mce_chatprefix", "[SNK.SRV] ", "Chat prefix for all Nominations Extended related messages");
 
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	
@@ -170,6 +174,17 @@ public void OnConfigsExecuted()
 	if (GetConVarBool(g_Cvar_EnhancedMenu))
 	{
 		BuildTierMenus();
+	}
+	
+	GetConVarString(g_Cvar_ChatPrefix, g_szChatPrefix, sizeof(g_szChatPrefix));
+	HookConVarChange(g_Cvar_ChatPrefix, OnSettingsChanged);
+}
+
+public void OnSettingsChanged(Handle convar, const char[] oldValue, const char[] newValue)
+{
+	if (convar == g_Cvar_ChatPrefix)
+	{
+		GetConVarString(g_Cvar_ChatPrefix, g_szChatPrefix, sizeof(g_szChatPrefix));
 	}
 }
 
@@ -357,15 +372,15 @@ void ShowMatches(int client, char[] mapname)
     	{
 			if (isCurrent) 
 			{
-				CReplyToCommand(client, "[NE] %t", "Can't Nominate Current Map");
+				CReplyToCommand(client, "%s%t", g_szChatPrefix, "Can't Nominate Current Map");
 			}
 			else if (isExclude)
 			{
-				CReplyToCommand(client, "[NE] %t", "Map in Exclude List");
+				CReplyToCommand(client, "%s%t", g_szChatPrefix, "Map in Exclude List");
 			}
 			else 
 			{
-				CReplyToCommand(client, "%t", "Map was not found", mapname);
+				CReplyToCommand(client, "%s%t", g_szChatPrefix, "Map was not found", mapname);
 			}
 
 			delete SubMapMenu;
@@ -378,11 +393,11 @@ void ShowMatches(int client, char[] mapname)
 			{
 				if (result == Nominate_AlreadyInVote)
 				{
-					CReplyToCommand(client, "%t", "Map Already In Vote", lastMap);
+					CReplyToCommand(client, "%s%t", g_szChatPrefix, "Map Already In Vote", lastMap);
 				}
 				else
 				{
-					CReplyToCommand(client, "[NE] %t", "Map Already Nominated");
+					CReplyToCommand(client, "%s%t", g_szChatPrefix, "Map Already Nominated");
 				}
 			}
 			else 
@@ -391,7 +406,7 @@ void ShowMatches(int client, char[] mapname)
 
 				char name[MAX_NAME_LENGTH];
 				GetClientName(client, name, sizeof(name));
-				PrintToChatAll("[NE] %t", "Map Nominated", name, lastMap);
+				PrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, lastMap);
 				LogMessage("\"%L\" nominated %s", client, lastMap);
 			}	
 
@@ -612,12 +627,12 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 			/* Don't need to check for InvalidMap because the menu did that already */
 			if (result == Nominate_AlreadyInVote)
 			{
-				PrintToChat(param1, "[SNK.SRV] %t", "Map Already Nominated");
+				PrintToChat(param1, "%s%t", g_szChatPrefix, "Map Already Nominated");
 				return 0;
 			}
 			else if (result == Nominate_VoteFull)
 			{
-				PrintToChat(param1, "[SNK.SRV] %t", "Max Nominations");
+				PrintToChat(param1, "%s%t", g_szChatPrefix, "Max Nominations");
 				return 0;
 			}
 			
@@ -625,11 +640,11 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 
 			if (result == Nominate_Replaced)
 			{
-				PrintToChatAll("[SNK.SRV] %t", "Map Nomination Changed", name, mapName);
+				PrintToChatAll("%s%t", g_szChatPrefix, "Map Nomination Changed", name, mapName);
 				return 0;	
 			}
 			
-			PrintToChatAll("[SNK.SRV] %t", "Map Nominated", name, mapName);
+			PrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, mapName);
 			LogMessage("\"%L\" nominated %s", param1, map);
 		}
 		
@@ -775,7 +790,7 @@ stock bool IsNominateAllowed(int client)
 	{
 		case CanNominate_No_VoteInProgress:
 		{
-			CReplyToCommand(client, "[SNK.SRV] %t", "Nextmap Voting Started");
+			CReplyToCommand(client, "%s%t", g_szChatPrefix, "Nextmap Voting Started");
 			return false;
 		}
 		
@@ -783,13 +798,13 @@ stock bool IsNominateAllowed(int client)
 		{
 			char map[PLATFORM_MAX_PATH];
 			GetNextMap(map, sizeof(map));
-			CReplyToCommand(client, "[SNK.SRV] %t", "Next Map", map);
+			CReplyToCommand(client, "%s%t", g_szChatPrefix, "Next Map", map);
 			return false;
 		}
 		
 		case CanNominate_No_VoteFull:
 		{
-			CReplyToCommand(client, "[SNK.SRV] %t", "Max Nominations");
+			CReplyToCommand(client, "%s%t", g_szChatPrefix, "Max Nominations");
 			return false;
 		}
 	}

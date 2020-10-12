@@ -107,6 +107,7 @@ ConVar g_Cvar_ExtendFragStep;
 ConVar g_Cvar_ExcludeMaps;
 ConVar g_Cvar_IncludeMaps;
 ConVar g_Cvar_NoVoteMode;
+ConVar g_Cvar_NoVoteModeMinPlayers;
 ConVar g_Cvar_Extend;
 ConVar g_Cvar_DontChange;
 ConVar g_Cvar_EndOfMapVote;
@@ -230,12 +231,13 @@ public void OnPluginStart()
 	g_Cvar_StartTime = CreateConVar("mce_starttime", "10.0", "Specifies when to start the vote based on time remaining.", _, true, 1.0);
 	g_Cvar_StartRounds = CreateConVar("mce_startround", "2.0", "Specifies when to start the vote based on rounds remaining. Use 0 on DoD:S, CS:S, and TF2 to start vote during bonus round time", _, true, 0.0);
 	g_Cvar_StartFrags = CreateConVar("mce_startfrags", "5.0", "Specifies when to start the vote base on frags remaining.", _, true, 1.0);
-	g_Cvar_ExtendTimeStep = CreateConVar("mce_extend_timestep", "15", "Specifies how much many more minutes each extension makes", _, true, 5.0);
-	g_Cvar_ExtendRoundStep = CreateConVar("mce_extend_roundstep", "5", "Specifies how many more rounds each extension makes", _, true, 1.0);
-	g_Cvar_ExtendFragStep = CreateConVar("mce_extend_fragstep", "10", "Specifies how many more frags are allowed when map is extended.", _, true, 5.0);	
+	g_Cvar_ExtendTimeStep = CreateConVar("mce_extend_timestep", "15", "Specifies how much many more minutes each extension makes", _, true, 1.0);
+	g_Cvar_ExtendRoundStep = CreateConVar("mce_extend_roundstep", "5", "Specifies how many more rounds each extension makes", _, true);
+	g_Cvar_ExtendFragStep = CreateConVar("mce_extend_fragstep", "10", "Specifies how many more frags are allowed when map is extended.", _, true);	
 	g_Cvar_ExcludeMaps = CreateConVar("mce_exclude", "5", "Specifies how many past maps to exclude from the vote.", _, true, 0.0);
 	g_Cvar_IncludeMaps = CreateConVar("mce_include", "5", "Specifies how many maps to include in the vote.", _, true, 2.0, true, 6.0);
-	g_Cvar_NoVoteMode = CreateConVar("mce_novote", "1", "Specifies whether or not MapChooser should pick a map if no votes are received.", _, true, 0.0, true, 1.0);
+	g_Cvar_NoVoteMode = CreateConVar("mce_novote", "1", "Specifies if MapChooser should pick a map (1), extend (2), or do nothing (0) if no votes are received.", _, true, 0.0, true, 2.0);
+	g_Cvar_NoVoteModeMinPlayers = CreateConVar("mce_novote_minplayers", "0", "Specifies the minimum number of players to extend map if no votes are received (requires mce_novote 2)", _, true, 0.0, true, 64.0);
 	g_Cvar_Extend = CreateConVar("mce_extend", "0", "Number of extensions allowed each map.", _, true, 0.0);
 	g_Cvar_DontChange = CreateConVar("mce_dontchange", "1", "Specifies if a 'Don't Change' option should be added to early votes", _, true, 0.0);
 	g_Cvar_VoteDuration = CreateConVar("mce_voteduration", "20", "Specifies how long the mapvote should be available for.", _, true, 5.0);
@@ -1226,52 +1228,10 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 
 	if (strcmp(map, VOTE_EXTEND, false) == 0)
 	{
-		g_Extends++;
-		
-		int time;
-		if (GetMapTimeLimit(time))
-		{
-			if (time > 0)
-			{
-				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);				
-			}
-		}
-		
-		if (g_Cvar_Winlimit)
-		{
-			int winlimit = g_Cvar_Winlimit.IntValue;
-			if (winlimit)
-			{
-				g_Cvar_Winlimit.IntValue = winlimit + g_Cvar_ExtendRoundStep.IntValue;
-			}
-		}
-		
-		if (g_Cvar_Maxrounds)
-		{
-			int maxrounds = g_Cvar_Maxrounds.IntValue;
-			if (maxrounds)
-			{
-				g_Cvar_Maxrounds.IntValue = maxrounds + g_Cvar_ExtendRoundStep.IntValue;
-			}
-		}
-		
-		if (g_Cvar_Fraglimit)
-		{
-			int fraglimit = g_Cvar_Fraglimit.IntValue;
-			if (fraglimit)
-			{
-				g_Cvar_Fraglimit.IntValue = fraglimit + g_Cvar_ExtendFragStep.IntValue;
-			}
-		}
-
+		ExtendMap();
+		CreateNextVote();
 		CPrintToChatAll("%s%t", g_szChatPrefix, "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
-		
-		// We extended, so we'll have to vote again.
-		g_HasVoteStarted = false;
-		CreateNextVote();
-		SetupTimeleftTimer();
-
 	}
 	else if (strcmp(map, VOTE_DONTCHANGE, false) == 0)
 	{
@@ -1312,7 +1272,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 	}	
 }
 
-public void Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
+public int Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
 {
 	// Implement revote logic - Only run this` block if revotes are enabled and this isn't the last revote
 	if (g_Cvar_RunOff.BoolValue && num_items > 1 && g_RunoffCount < g_Cvar_MaxRunOffs.IntValue)
@@ -1454,7 +1414,7 @@ public int Handler_MapVoteMenu(Menu menu, MenuAction action, int param1, int par
 		case MenuAction_VoteCancel:
 		{
 			// If we receive 0 votes, pick at random.
-			if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.BoolValue)
+			if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 1)
 			{
 				int count;
 				count = GetMenuItemCount(menu);
@@ -1483,6 +1443,12 @@ public int Handler_MapVoteMenu(Menu menu, MenuAction action, int param1, int par
 				
 				SetNextMap(map);
 				g_MapVoteCompleted = true;
+			}
+			else if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 2 && GetClientCount() >= g_Cvar_NoVoteModeMinPlayers.IntValue)
+			{
+				ExtendMap();
+				CPrintToChatAll("%s%t", g_szChatPrefix, "No Vote Extend", g_Cvar_ExtendTimeStep.IntValue);
+				LogAction(-1, -1, "Voting for next map has finished. No votes received, so map has been extended.");
 			}
 			else
 			{
@@ -2103,6 +2069,51 @@ stock int AddExtendToMenu(Handle menu, MapChange when)
 	{
 		AddMenuItem(menu, VOTE_EXTEND, "Extend Map");
 	}
+}
+
+stock void ExtendMap()
+{
+	g_Extends++;
+	
+	int time;
+	if (GetMapTimeLimit(time))
+	{
+		if (time > 0)
+		{
+			ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
+		}
+	}
+	
+	if (g_Cvar_Winlimit)
+	{
+		int winlimit = g_Cvar_Winlimit.IntValue;
+		if (winlimit)
+		{
+			g_Cvar_Winlimit.IntValue = winlimit + g_Cvar_ExtendRoundStep.IntValue;
+		}
+	}
+	
+	if (g_Cvar_Maxrounds)
+	{
+		int maxrounds = g_Cvar_Maxrounds.IntValue;
+		if (maxrounds)
+		{
+			g_Cvar_Maxrounds.IntValue = maxrounds + g_Cvar_ExtendRoundStep.IntValue;
+		}
+	}
+	
+	if (g_Cvar_Fraglimit)
+	{
+		int fraglimit = g_Cvar_Fraglimit.IntValue;
+		if (fraglimit)
+		{
+			g_Cvar_Fraglimit.IntValue = fraglimit + g_Cvar_ExtendFragStep.IntValue;
+		}
+	}
+
+	// We extended, so we'll have to vote again.
+	g_HasVoteStarted = false;
+	SetupTimeleftTimer();
 }
 
 int GetVoteSize()

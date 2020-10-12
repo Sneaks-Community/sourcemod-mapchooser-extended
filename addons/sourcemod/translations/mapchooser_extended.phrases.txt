@@ -105,5 +105,11 @@
 		"#format"	"{1:s}"
 		"en"		"*{1}"
 	}
-
+	
+	"No Vote Extend"
+	{
+		"#format"	"{1:i}"
+		"en"		"No votes cast, extending map by {1} minutes."
+	}
+	
 }

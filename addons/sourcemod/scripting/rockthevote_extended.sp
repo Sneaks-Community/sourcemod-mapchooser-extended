@@ -251,7 +251,7 @@ void AttemptRTV(int client)
 	g_Votes++;
 	g_Voted[client] = true;
 
-	CPrintToChatAll("%s%t", "RTV Requested", g_szChatPrefix, name, g_Votes, g_VotesNeeded);
+	CPrintToChatAll("%s%t", g_szChatPrefix, "RTV Requested", name, g_Votes, g_VotesNeeded);
 
 	if (g_Votes >= g_VotesNeeded)
 	{

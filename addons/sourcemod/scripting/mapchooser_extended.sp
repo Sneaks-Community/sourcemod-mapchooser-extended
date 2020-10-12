@@ -1229,6 +1229,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 	if (strcmp(map, VOTE_EXTEND, false) == 0)
 	{
 		ExtendMap();
+		CreateNextVote();
 		CPrintToChatAll("%s%t", g_szChatPrefix, "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
 	}
@@ -1271,7 +1272,7 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 	}	
 }
 
-public void Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
+public int Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
 {
 	// Implement revote logic - Only run this` block if revotes are enabled and this isn't the last revote
 	if (g_Cvar_RunOff.BoolValue && num_items > 1 && g_RunoffCount < g_Cvar_MaxRunOffs.IntValue)
@@ -2112,7 +2113,6 @@ stock void ExtendMap()
 
 	// We extended, so we'll have to vote again.
 	g_HasVoteStarted = false;
-	CreateNextVote();
 	SetupTimeleftTimer();
 }
 

@@ -1228,52 +1228,9 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 
 	if (strcmp(map, VOTE_EXTEND, false) == 0)
 	{
-		g_Extends++;
-		
-		int time;
-		if (GetMapTimeLimit(time))
-		{
-			if (time > 0)
-			{
-				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
-			}
-		}
-		
-		if (g_Cvar_Winlimit)
-		{
-			int winlimit = g_Cvar_Winlimit.IntValue;
-			if (winlimit)
-			{
-				g_Cvar_Winlimit.IntValue = winlimit + g_Cvar_ExtendRoundStep.IntValue;
-			}
-		}
-		
-		if (g_Cvar_Maxrounds)
-		{
-			int maxrounds = g_Cvar_Maxrounds.IntValue;
-			if (maxrounds)
-			{
-				g_Cvar_Maxrounds.IntValue = maxrounds + g_Cvar_ExtendRoundStep.IntValue;
-			}
-		}
-		
-		if (g_Cvar_Fraglimit)
-		{
-			int fraglimit = g_Cvar_Fraglimit.IntValue;
-			if (fraglimit)
-			{
-				g_Cvar_Fraglimit.IntValue = fraglimit + g_Cvar_ExtendFragStep.IntValue;
-			}
-		}
-
+		ExtendMap();
 		CPrintToChatAll("%s%t", g_szChatPrefix, "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
-		
-		// We extended, so we'll have to vote again.
-		g_HasVoteStarted = false;
-		CreateNextVote();
-		SetupTimeleftTimer();
-
 	}
 	else if (strcmp(map, VOTE_DONTCHANGE, false) == 0)
 	{
@@ -1488,8 +1445,9 @@ public int Handler_MapVoteMenu(Menu menu, MenuAction action, int param1, int par
 			}
 			else if (param1 == VoteCancel_NoVotes && g_Cvar_NoVoteMode.IntValue == 2 && GetClientCount() >= g_Cvar_NoVoteModeMinPlayers.IntValue)
 			{
-				ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
+				ExtendMap();
 				CPrintToChatAll("%s%t", g_szChatPrefix, "No Vote Extend", g_Cvar_ExtendTimeStep.IntValue);
+				LogAction(-1, -1, "Voting for next map has finished. No votes received, so map has been extended.");
 			}
 			else
 			{
@@ -2110,6 +2068,52 @@ stock int AddExtendToMenu(Handle menu, MapChange when)
 	{
 		AddMenuItem(menu, VOTE_EXTEND, "Extend Map");
 	}
+}
+
+stock void ExtendMap()
+{
+	g_Extends++;
+	
+	int time;
+	if (GetMapTimeLimit(time))
+	{
+		if (time > 0)
+		{
+			ExtendMapTimeLimit(g_Cvar_ExtendTimeStep.IntValue * 60);
+		}
+	}
+	
+	if (g_Cvar_Winlimit)
+	{
+		int winlimit = g_Cvar_Winlimit.IntValue;
+		if (winlimit)
+		{
+			g_Cvar_Winlimit.IntValue = winlimit + g_Cvar_ExtendRoundStep.IntValue;
+		}
+	}
+	
+	if (g_Cvar_Maxrounds)
+	{
+		int maxrounds = g_Cvar_Maxrounds.IntValue;
+		if (maxrounds)
+		{
+			g_Cvar_Maxrounds.IntValue = maxrounds + g_Cvar_ExtendRoundStep.IntValue;
+		}
+	}
+	
+	if (g_Cvar_Fraglimit)
+	{
+		int fraglimit = g_Cvar_Fraglimit.IntValue;
+		if (fraglimit)
+		{
+			g_Cvar_Fraglimit.IntValue = fraglimit + g_Cvar_ExtendFragStep.IntValue;
+		}
+	}
+
+	// We extended, so we'll have to vote again.
+	g_HasVoteStarted = false;
+	CreateNextVote();
+	SetupTimeleftTimer();
 }
 
 int GetVoteSize()

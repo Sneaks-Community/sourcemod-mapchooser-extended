@@ -830,7 +830,7 @@ int GetTier(char[] mapname)
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
 	
-	else if (g_bKzTimer)
+	/*else if (g_bKzTimer)
 	{
 
 	}
@@ -838,7 +838,7 @@ int GetTier(char[] mapname)
 	else if (g_bSurfTimer)
 	{
 
-	}
+	}*/
 	
 	else if (GetConVarBool(g_Cvar_DisplayName))
 	{

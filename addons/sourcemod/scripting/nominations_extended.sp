@@ -829,14 +829,17 @@ int GetTier(char[] mapname)
 		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
-	else if (!g_bKzTimer)
+	
+	else if (g_bKzTimer)
 	{
 
 	}
-	else if (!g_bSurfTimer)
+	
+	else if (g_bSurfTimer)
 	{
 
 	}
+	
 	else if (GetConVarBool(g_Cvar_DisplayName))
 	{
 		char mapDisplay[PLATFORM_MAX_PATH];

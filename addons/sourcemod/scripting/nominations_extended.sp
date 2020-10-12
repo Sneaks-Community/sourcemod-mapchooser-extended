@@ -279,7 +279,14 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 	{
 		ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
 		
-		AttemptNominate(client);
+		if (GetConVarBool(g_Cvar_EnhancedMenu))
+		{
+			OpenTiersMenu(client);
+		}
+		else
+		{
+			AttemptNominate(client);
+		}
 		
 		SetCmdReplySource(old);
 	}
@@ -294,7 +301,7 @@ public Action Command_Nominate(int client, int args)
 	
 	if (args == 0)
 	{
-		if (GetConVarBool(g_Cvar_EnhancedMenu)) 
+		if (GetConVarBool(g_Cvar_EnhancedMenu))
 		{
 			OpenTiersMenu(client);
 		}

@@ -113,6 +113,7 @@ public void OnPluginStart()
 	// Nominations Extended cvars
 	CreateConVar("ne_version", MCE_VERSION, "Nominations Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
+	AutoExecConfig(true, "nominations_extended");
 
 	g_mapTrie = CreateTrie();
 }

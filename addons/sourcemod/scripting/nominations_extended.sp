@@ -101,10 +101,10 @@ public void OnPluginStart()
 	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
 	g_Cvar_ExcludeCurrent = CreateConVar("sm_nominate_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
 	g_Cvar_DisplayName = CreateConVar("sm_nominate_displayname", "1", "Use custom Display Names instead of the raw map name", 0, true, 0.00, true, 1.0);
-	g_Cvar_EnhancedMenu = CreateConVar("smc_enhanced_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
-	g_Cvar_MinTier = CreateConVar("smc_min_tier", "1", "The minimum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
-	g_Cvar_MaxTier = CreateConVar("smc_max_tier", "6", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
-	g_Cvar_ChatPrefix = CreateConVar("mce_chatprefix", "[SNK.SRV] ", "Chat prefix for all Nominations Extended related messages");
+	g_Cvar_EnhancedMenu = CreateConVar("sm_enhanced_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
+	g_Cvar_MinTier = CreateConVar("sm_min_tier", "1", "The minimum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
+	g_Cvar_MaxTier = CreateConVar("sm_max_tier", "6", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
+	g_Cvar_ChatPrefix = CreateConVar("sm_nominate_chatprefix", "[SNK.SRV] ", "Chat prefix for all Nominations Extended related messages");
 
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	

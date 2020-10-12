@@ -527,6 +527,7 @@ void BuildEnhancedMenu()
 	delete g_EnhancedMenu;
 
 	g_EnhancedMenu = new Menu(TiersMenuHandler);
+	SetMenuPagination(g_EnhancedMenu, MENU_NO_PAGINATION);
 	g_EnhancedMenu.ExitButton = true;
 	
 	g_EnhancedMenu.SetTitle("Nominate Menu");	

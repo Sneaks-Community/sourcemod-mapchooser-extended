@@ -1501,19 +1501,19 @@ bool RemoveStringFromArray(Handle array, char[] str)
 void CreateNextVote()
 {
 	assert(g_NextMapList)
-	ClearArray(g_NextMapList);
+	g_NextMapList.Clear();
 	
 	char map[PLATFORM_MAX_PATH];
 	Handle tempMaps = CloneArray(g_MapList);
 	
-	GetCurrentMap(map, PLATFORM_MAX_PATH);
+	GetCurrentMap(map, sizeof(map));
 	RemoveStringFromArray(tempMaps, map);
 	
 	if (g_Cvar_ExcludeMaps.IntValue && GetArraySize(tempMaps) > g_Cvar_ExcludeMaps.IntValue)
 	{
-		for (int i = 0; i < GetArraySize(g_OldMapList); i++)
+		for (int i = 0; i < g_OldMapList.Length; i++)
 		{
-			GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
+			g_OldMapList.GetString(i, map, sizeof(map));
 			RemoveStringFromArray(tempMaps, map);
 		}	
 	}
@@ -1525,7 +1525,7 @@ void CreateNextVote()
 	{
 		int b = GetRandomInt(0, GetArraySize(tempMaps) - 1);
 		GetArrayString(tempMaps, b, map, PLATFORM_MAX_PATH);
-		PushArrayString(g_NextMapList, map);
+		g_NextMapList.PushString(map);
 		RemoveFromArray(tempMaps, b);
 	}
 	

@@ -1229,7 +1229,6 @@ public void Handler_VoteFinishedGeneric(Handle menu, int num_votes, int num_clie
 	if (strcmp(map, VOTE_EXTEND, false) == 0)
 	{
 		ExtendMap();
-		CreateNextVote();
 		CPrintToChatAll("%s%t", g_szChatPrefix, "Current Map Extended", RoundToFloor(float(item_info[0][VOTEINFO_ITEM_VOTES])/float(num_votes)*100), num_votes);
 		LogAction(-1, -1, "Voting for next map has finished. The current map has been extended.");
 	}
@@ -1501,41 +1500,33 @@ bool RemoveStringFromArray(Handle array, char[] str)
 
 void CreateNextVote()
 {
-	g_NextMapList.Clear();
+	assert(g_NextMapList)
+	ClearArray(g_NextMapList);
 	
 	char map[PLATFORM_MAX_PATH];
-	// tempMaps is a resolved map list
-	ArrayList tempMaps = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+	Handle tempMaps = CloneArray(g_MapList);
 	
-	for (int i = 0; i < g_MapList.Length; i++)
-	{
-		g_MapList.GetString(i, map, sizeof(map));
-		if (FindMap(map, map, sizeof(map)) != FindMap_NotFound)
-		{
-			tempMaps.PushString(map);
-		}
-	}
-	
-	//GetCurrentMap always returns a resolved map
-	GetCurrentMap(map, sizeof(map));
+	GetCurrentMap(map, PLATFORM_MAX_PATH);
 	RemoveStringFromArray(tempMaps, map);
 	
-	if (g_Cvar_ExcludeMaps.IntValue && tempMaps.Length > g_Cvar_ExcludeMaps.IntValue)
+	if (g_Cvar_ExcludeMaps.IntValue && GetArraySize(tempMaps) > g_Cvar_ExcludeMaps.IntValue)
 	{
-		for (int i = 0; i < g_OldMapList.Length; i++)
+		for (int i = 0; i < GetArraySize(g_OldMapList); i++)
 		{
-			g_OldMapList.GetString(i, map, sizeof(map));
+			GetArrayString(g_OldMapList, i, map, PLATFORM_MAX_PATH);
 			RemoveStringFromArray(tempMaps, map);
-		}
+		}	
 	}
 
-	int limit = (g_Cvar_IncludeMaps.IntValue < tempMaps.Length ? g_Cvar_IncludeMaps.IntValue : tempMaps.Length);
+	int voteSize = GetVoteSize();
+	int limit = (voteSize < GetArraySize(tempMaps) ? voteSize : GetArraySize(tempMaps));
+	
 	for (int i = 0; i < limit; i++)
 	{
-		int b = GetRandomInt(0, tempMaps.Length - 1);
-		tempMaps.GetString(b, map, sizeof(map));		
-		g_NextMapList.PushString(map);
-		tempMaps.Erase(b);
+		int b = GetRandomInt(0, GetArraySize(tempMaps) - 1);
+		GetArrayString(tempMaps, b, map, PLATFORM_MAX_PATH);
+		PushArrayString(g_NextMapList, map);
+		RemoveFromArray(tempMaps, b);
 	}
 	
 	delete tempMaps;
@@ -2113,6 +2104,7 @@ stock void ExtendMap()
 
 	// We extended, so we'll have to vote again.
 	g_HasVoteStarted = false;
+	CreateNextVote();
 	SetupTimeleftTimer();
 }
 

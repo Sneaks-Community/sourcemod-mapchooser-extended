@@ -96,7 +96,7 @@ public void OnPluginStart()
 	// Rock The Vote Extended cvars
 	CreateConVar("rtve_version", MCE_VERSION, "Rock The Vote Extended Version", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
-	AutoExecConfig(true, "rtv");
+	AutoExecConfig(true, "rockthevote_extended");
 }
 
 public void OnMapStart()

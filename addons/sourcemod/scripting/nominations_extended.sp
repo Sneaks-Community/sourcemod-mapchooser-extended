@@ -78,7 +78,7 @@ ArrayList g_aTierMenus;
 char g_szChatPrefix[128];
 
 bool g_bBhopTimer = false;
-bool g_bKzTimer = false;
+bool g_bKzGlobal = false;
 bool g_bSurfTimer = false;
 
 #define MAPSTATUS_ENABLED (1<<0)
@@ -139,13 +139,9 @@ public void OnLibraryAdded(const char[] szName)
 	{
 		g_bBhopTimer = true;
 	}
-	if (StrEqual(szName, "KZTimer"))
+	if (StrEqual(szName, "GlobalAPI-Core"))
 	{
-		g_bKzTimer = true;
-	}
-	if (StrEqual (szName, "gokz-core"))
-	{
-		g_bKzTimer = true;
+		g_bKzGlobal = true;
 	}
 	if (StrEqual(szName, "surftimer"))
 	{
@@ -159,13 +155,9 @@ public void OnLibraryRemoved(const char[] szName)
 	{
 		g_bBhopTimer = false;
 	}
-	if (StrEqual(szName, "KZTimer"))
+	if (StrEqual(szName, "GlobalAPI-Core"))
 	{
-		g_bKzTimer = false;
-	}
-	if (StrEqual (szName, "gokz-core"))
-	{
-		g_bKzTimer = false;
+		g_bKzGlobal = false;
 	}
 	if (StrEqual(szName, "surftimer"))
 	{
@@ -254,7 +246,7 @@ public Action Command_Addmap(int client, int args)
 {
 	if (args < 1)
 	{
-		CReplyToCommand(client, "[NE] Usage: sm_nominate_addmap <mapname>");
+		CReplyToCommand(client, "%sUsage: sm_nominate_addmap <mapname>", g_szChatPrefix);
 		return Plugin_Handled;
 	}
 	
@@ -860,7 +852,7 @@ int GetTier(char[] mapname)
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
 	
-	else if (g_bKzTimer)
+	else if (g_bKzGlobal)
 	{
 		char mapdisplay[PLATFORM_MAX_PATH + 32];
 		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));

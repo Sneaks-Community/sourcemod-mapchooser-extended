@@ -261,7 +261,7 @@ public void OnPluginStart()
 	g_Cvar_RandomizeNominations = CreateConVar("mce_randomizeorder", "0", "Randomize map order?", _, true, 0.0, true, 1.0);
 	g_Cvar_HideTimer = CreateConVar("mce_hidetimer", "0", "Hide the MapChooser Extended warning timer", _, true, 0.0, true, 1.0);
 	g_Cvar_NoVoteOption = CreateConVar("mce_addnovote", "1", "Add \"No Vote\" to vote menu?", _, true, 0.0, true, 1.0);
-	g_Cvar_ChatPrefix = CreateConVar("mce_chatprefix", "[SNK.SRV] ", "Chat prefix for all MCE related messages");
+	g_Cvar_ChatPrefix = CreateConVar("mce_chatprefix", "[MCE] ", "Chat prefix for all MCE related messages");
 
 	RegAdminCmd("sm_mapvote", Command_Mapvote, ADMFLAG_CHANGEMAP, "sm_mapvote - Forces MapChooser to attempt to run a map vote now.");
 	RegAdminCmd("sm_setnextmap", Command_SetNextmap, ADMFLAG_CHANGEMAP, "sm_setnextmap <map>");

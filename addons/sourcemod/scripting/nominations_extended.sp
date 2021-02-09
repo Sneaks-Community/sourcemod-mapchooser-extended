@@ -37,9 +37,14 @@
 #include "include/mapchooser_extended"
 #include <colors>
 #undef REQUIRE_PLUGIN
+
 #tryinclude <shavit>
 #tryinclude <kztimer>
 #tryinclude <surftimer>
+
+#tryinclude <SteamWorks>
+#tryinclude <smjansson>
+
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -73,7 +78,7 @@ ArrayList g_aTierMenus;
 char g_szChatPrefix[128];
 
 bool g_bBhopTimer = false;
-bool g_bKzTimer = false;
+bool g_bKzGlobal = false;
 bool g_bSurfTimer = false;
 
 #define MAPSTATUS_ENABLED (1<<0)
@@ -81,6 +86,8 @@ bool g_bSurfTimer = false;
 #define MAPSTATUS_EXCLUDE_CURRENT (1<<2)
 #define MAPSTATUS_EXCLUDE_PREVIOUS (1<<3)
 #define MAPSTATUS_EXCLUDE_NOMINATED (1<<4)
+
+StringMap g_KzMapTiers;
 
 Handle g_mapTrie;
 
@@ -98,13 +105,15 @@ public void OnPluginStart()
 	g_MapList = CreateArray(arraySize);
 	g_aTierMenus = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
 	
+	g_KzMapTiers = new StringMap();
+	
 	g_Cvar_ExcludeOld = CreateConVar("sm_nominate_excludeold", "1", "Specifies if the current map should be excluded from the Nominations list", 0, true, 0.00, true, 1.0);
 	g_Cvar_ExcludeCurrent = CreateConVar("sm_nominate_excludecurrent", "1", "Specifies if the MapChooser excluded maps should also be excluded from Nominations", 0, true, 0.00, true, 1.0);
 	g_Cvar_DisplayName = CreateConVar("sm_nominate_displayname", "1", "Use custom Display Names instead of the raw map name", 0, true, 0.00, true, 1.0);
 	g_Cvar_EnhancedMenu = CreateConVar("sm_nominate_enhanced_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
 	g_Cvar_MinTier = CreateConVar("sm_nominate_min_tier", "1", "The minimum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
-	g_Cvar_MaxTier = CreateConVar("sm_nominate_max_tier", "6", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
-	g_Cvar_ChatPrefix = CreateConVar("sm_nominate_chatprefix", "[SNK.SRV] ", "Chat prefix for all Nominations Extended related messages");
+	g_Cvar_MaxTier = CreateConVar("sm_nominate_max_tier", "7", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
+	g_Cvar_ChatPrefix = CreateConVar("sm_nominate_chatprefix", "[NE] ", "Chat prefix for all Nominations Extended related messages");
 
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	
@@ -130,9 +139,9 @@ public void OnLibraryAdded(const char[] szName)
 	{
 		g_bBhopTimer = true;
 	}
-	if (StrEqual(szName, "KZTimer"))
+	if (StrEqual(szName, "GlobalAPI-Core"))
 	{
-		g_bKzTimer = true;
+		g_bKzGlobal = true;
 	}
 	if (StrEqual(szName, "surftimer"))
 	{
@@ -146,9 +155,9 @@ public void OnLibraryRemoved(const char[] szName)
 	{
 		g_bBhopTimer = false;
 	}
-	if (StrEqual(szName, "KZTimer"))
+	if (StrEqual(szName, "GlobalAPI-Core"))
 	{
-		g_bKzTimer = false;
+		g_bKzGlobal = false;
 	}
 	if (StrEqual(szName, "surftimer"))
 	{
@@ -189,6 +198,21 @@ public void OnSettingsChanged(Handle convar, const char[] oldValue, const char[]
 	}
 }
 
+public void OnMapStart()
+{
+	if (g_bKzGlobal)
+	{
+		Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, "http://kztimerglobal.com/api/v1/maps?limit=5000");
+		if  (request != INVALID_HANDLE)
+		{
+			if (!SteamWorks_SetHTTPCallbacks(request, HTTPRequestCompleted_MapTiers) || !SteamWorks_SendHTTPRequest(request))
+			{
+				delete request;
+			}
+		}
+	}
+}
+
 public void OnNominationRemoved(const char[] map, int owner)
 {
 	int status;
@@ -225,7 +249,7 @@ public Action Command_Addmap(int client, int args)
 {
 	if (args < 1)
 	{
-		CReplyToCommand(client, "[SNK.SRV] Usage: sm_nominate_addmap <mapname>");
+		CReplyToCommand(client, "%sUsage: sm_nominate_addmap <mapname>", g_szChatPrefix);
 		return Plugin_Handled;
 	}
 	
@@ -831,12 +855,14 @@ int GetTier(char[] mapname)
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
 	
-	/*else if (g_bKzTimer)
+	else if (g_bKzGlobal)
 	{
-
+		char mapdisplay[PLATFORM_MAX_PATH + 32];
+		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));
+		tier = Kz_GetMapTier(mapdisplay);
 	}
 	
-	else if (g_bSurfTimer)
+	/*else if (g_bSurfTimer)
 	{
 
 	}*/
@@ -886,5 +912,63 @@ int GetTier(char[] mapname)
 		tier = GetConVarInt(g_Cvar_MaxTier);
 	}
 
+	return tier;
+}
+
+// Credits to Szwagi
+void HTTPRequestCompleted_MapTiers(Handle request, bool failure, bool requestSuccess, EHTTPStatusCode status, any data)
+{
+    if (!failure && requestSuccess && status == k_EHTTPStatusCode200OK)
+    {
+        int size;
+        if (SteamWorks_GetHTTPResponseBodySize(request, size))
+        {
+            static char buffer[512000]; // Lets hope thats enough?
+            if ((size < sizeof(buffer)) && SteamWorks_GetHTTPResponseBodyData(request, buffer, size))
+            {
+                ProcessMapTierJsonData(buffer);
+            }
+        }
+    }
+    delete request;
+}
+ 
+void ProcessMapTierJsonData(const char[] buffer)
+{
+    Handle array = json_load(buffer);
+    if (array != null)
+    {
+        int arraySize = json_array_size(array);
+        for (int idx = 0; idx < arraySize; idx++)
+        {
+            Handle it = json_array_get(array, idx);
+            if (it != null)
+            {
+                Handle nameObj = json_object_get(it, "name");
+                Handle tierObj = json_object_get(it, "difficulty");
+                if (nameObj != null && tierObj != null)
+                {
+                    char mapdisplay[128];
+                    json_string_value(nameObj, mapdisplay, sizeof(mapdisplay)); 
+ 
+                    int tier = json_integer_value(tierObj);
+                    if (mapdisplay[0] != 0 && tier >= 1 && tier <= 7)
+                    {
+                        g_KzMapTiers.SetValue(mapdisplay, tier, true);
+                    }
+                }
+                delete nameObj;
+                delete tierObj;
+            }
+            delete it;
+        }   
+    }
+    delete array;
+}
+
+int Kz_GetMapTier(const char[] mapdisplay)
+{
+	int tier;
+	g_KzMapTiers.GetValue(mapdisplay, tier);
 	return tier;
 }

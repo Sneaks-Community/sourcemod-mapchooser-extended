@@ -200,12 +200,15 @@ public void OnSettingsChanged(Handle convar, const char[] oldValue, const char[]
 
 public void OnMapStart()
 {
-	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, "http://kztimerglobal.com/api/v1/maps?limit=5000");
-	if  (request != INVALID_HANDLE)
+	if (g_bKzGlobal)
 	{
-		if (!SteamWorks_SetHTTPCallbacks(request, HTTPRequestCompleted_MapTiers) || !SteamWorks_SendHTTPRequest(request))
+		Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, "http://kztimerglobal.com/api/v1/maps?limit=5000");
+		if  (request != INVALID_HANDLE)
 		{
-			delete request;
+			if (!SteamWorks_SetHTTPCallbacks(request, HTTPRequestCompleted_MapTiers) || !SteamWorks_SendHTTPRequest(request))
+			{
+				delete request;
+			}
 		}
 	}
 }

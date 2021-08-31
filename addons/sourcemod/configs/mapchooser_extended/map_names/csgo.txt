@@ -17,6 +17,8 @@
     "cs_thunder"    "Thunder"
     "cs_workout"    "Workout"
     "de_ali"        "Ali"
+    "de_ancient"    "Ancient"
+    "de_anubis"     "Anubis"
     "de_aztec"      "Aztec"
     "de_bank"       "Bank"
     "de_bazaar"     "Bazaar"

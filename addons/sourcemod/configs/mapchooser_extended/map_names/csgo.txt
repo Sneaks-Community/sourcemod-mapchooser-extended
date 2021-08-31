@@ -55,6 +55,6 @@
     "de_sugarcane"  "Sugar Cane"
     "de_train"      "Train"
     "de_tulip"      "Tulip"
-    "de_vertigo"    "Veritgo"
+    "de_vertigo"    "Vertigo"
     "de_zoo"        "Zoo"
 }

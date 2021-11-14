@@ -38,8 +38,6 @@
 #include <multicolors>
 #undef REQUIRE_PLUGIN
 #tryinclude <shavit>
-#tryinclude <kztimer>
-#tryinclude <surftimer>
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -73,8 +71,6 @@ ArrayList g_aTierMenus;
 char g_szChatPrefix[128];
 
 bool g_bBhopTimer = false;
-bool g_bKzTimer = false;
-bool g_bSurfTimer = false;
 
 #define MAPSTATUS_ENABLED (1<<0)
 #define MAPSTATUS_DISABLED (1<<1)
@@ -130,14 +126,6 @@ public void OnLibraryAdded(const char[] szName)
 	{
 		g_bBhopTimer = true;
 	}
-	if (StrEqual(szName, "KZTimer"))
-	{
-		g_bKzTimer = true;
-	}
-	if (StrEqual(szName, "surftimer"))
-	{
-		g_bSurfTimer = true;
-	}
 }
 
 public void OnLibraryRemoved(const char[] szName)
@@ -145,14 +133,6 @@ public void OnLibraryRemoved(const char[] szName)
 	if (StrEqual(szName, "shavit"))
 	{
 		g_bBhopTimer = false;
-	}
-	if (StrEqual(szName, "KZTimer"))
-	{
-		g_bKzTimer = false;
-	}
-	if (StrEqual(szName, "surftimer"))
-	{
-		g_bSurfTimer = false;
 	}
 }
 
@@ -830,16 +810,6 @@ int GetTier(char[] mapname)
 		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
-	
-	/*else if (g_bKzTimer)
-	{
-
-	}
-	
-	else if (g_bSurfTimer)
-	{
-
-	}*/
 	
 	else if (GetConVarBool(g_Cvar_DisplayName))
 	{

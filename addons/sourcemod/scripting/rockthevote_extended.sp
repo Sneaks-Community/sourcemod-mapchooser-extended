@@ -204,7 +204,7 @@ public Action Command_RTV(int client, int args)
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
 {
-	if (!g_CanRTV || !client)
+	if (!g_CanRTV || !client || IsChatTrigger())
 	{
 		return;
 	}

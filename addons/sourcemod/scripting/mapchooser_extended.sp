@@ -49,7 +49,7 @@
 #include <mapchooser_extended>
 #include <nextmap>
 #include <sdktools>
-#include <colors>
+#include <multicolors>
 
 #pragma newdecls required
 
@@ -655,7 +655,7 @@ public Action Timer_StartMapVote(Handle timer, Handle data)
 		}
 		else if (timerlocation == 2)
 		{
-			PrintToChatAll("%t", warningPhrase, warningTimeRemaining);
+			CPrintToChatAll("%t", warningPhrase, warningTimeRemaining);
 		}
 	}
 

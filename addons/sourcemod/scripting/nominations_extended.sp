@@ -35,7 +35,7 @@
 #include <sourcemod>
 #include <mapchooser>
 #include "include/mapchooser_extended"
-#include <colors>
+#include <multicolors>
 #undef REQUIRE_PLUGIN
 #tryinclude <shavit>
 #tryinclude <kztimer>
@@ -414,7 +414,7 @@ void ShowMatches(int client, char[] mapname)
 
 				char name[MAX_NAME_LENGTH];
 				GetClientName(client, name, sizeof(name));
-				PrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, lastMap);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, lastMap);
 				LogMessage("\"%L\" nominated %s", client, lastMap);
 			}	
 
@@ -636,12 +636,12 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 			/* Don't need to check for InvalidMap because the menu did that already */
 			if (result == Nominate_AlreadyInVote)
 			{
-				PrintToChat(param1, "%s%t", g_szChatPrefix, "Map Already Nominated");
+				CPrintToChat(param1, "%s%t", g_szChatPrefix, "Map Already Nominated");
 				return 0;
 			}
 			else if (result == Nominate_VoteFull)
 			{
-				PrintToChat(param1, "%s%t", g_szChatPrefix, "Max Nominations");
+				CPrintToChat(param1, "%s%t", g_szChatPrefix, "Max Nominations");
 				return 0;
 			}
 			
@@ -649,11 +649,11 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 
 			if (result == Nominate_Replaced)
 			{
-				PrintToChatAll("%s%t", g_szChatPrefix, "Map Nomination Changed", name, mapName);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nomination Changed", name, mapName);
 				return 0;	
 			}
 			
-			PrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, mapName);
+			CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, mapName);
 			LogMessage("\"%L\" nominated %s", param1, map);
 		}
 		

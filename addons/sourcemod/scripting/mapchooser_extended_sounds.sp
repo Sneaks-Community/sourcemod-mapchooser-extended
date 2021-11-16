@@ -35,9 +35,8 @@
 
 #include <sourcemod>
 #include <mapchooser>
-#include "include/mapchooser_extended"
+#include <mapchooser_extended>
 #include <sdktools>
-#include <emitsoundany>
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -252,7 +251,7 @@ public void OnMapVoteWarningTick(int time)
 				}
 				else
 				{
-					EmitSoundToAllAny(soundData[SoundStore_Value], .volume=soundData[SoundStore_Volume]);
+					EmitSoundToAll(soundData[SoundStore_Value], .volume=soundData[SoundStore_Volume]);
 				}
 			}
 		}
@@ -297,7 +296,7 @@ void PlaySound(SoundEvent event)
 				}
 				else
 				{
-					EmitSoundToAllAny(soundData[SoundStore_Value], .volume=soundData[SoundStore_Volume]);
+					EmitSoundToAll(soundData[SoundStore_Value], .volume=soundData[SoundStore_Volume]);
 				}
 			}
 		}
@@ -554,11 +553,11 @@ void CacheSound(int soundData[SoundStore])
 {
 	if (soundData[SoundStore_Type] == SoundType_Builtin)
 	{
-		PrecacheSoundAny(soundData[SoundStore_Value]);
+		PrecacheSound(soundData[SoundStore_Value]);
 	}
 	else if (soundData[SoundStore_Type] == SoundType_Sound)
 	{
-		if (PrecacheSoundAny(soundData[SoundStore_Value]))
+		if (PrecacheSound(soundData[SoundStore_Value]))
 		{
 			char downloadLocation[PLATFORM_MAX_PATH];
 			Format(downloadLocation, sizeof(downloadLocation), "sound/%s", soundData[SoundStore_Value]);

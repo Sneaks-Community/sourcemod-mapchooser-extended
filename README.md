@@ -32,4 +32,9 @@ The route this fork took was from [Powerlord's original MCE repository](https://
 
 ## Resources
 
+- [Multi-Colors](https://github.com/Bara/Multi-Colors) by [Bara](https://github.com/Bara) for compilation
 - [Mapcycle Generator for KZ Global Maps](https://devruto.github.io/KZMapcycleGenerator/) by [Ruto](https://github.com/devruto)
+
+## Notes
+
+- Sounds module unsupported, PR's welcome

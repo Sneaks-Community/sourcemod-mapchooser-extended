@@ -100,7 +100,7 @@ public void OnPluginStart()
 	g_Cvar_EnhancedMenu = CreateConVar("sm_nominate_enhanced_menu", "1", "Nominate menu can show maps by alphabetic order and tiers", 0, true, 0.0, true, 1.0 );
 	g_Cvar_MinTier = CreateConVar("sm_nominate_min_tier", "1", "The minimum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
 	g_Cvar_MaxTier = CreateConVar("sm_nominate_max_tier", "10", "The maximum tier to show on the enhanced menu",  _, true, 0.0, true, 10.0);
-	g_Cvar_ChatPrefix = CreateConVar("sm_nominate_chatprefix", "[SNK.SRV] ", "Chat prefix for all Nominations Extended related messages");
+	g_Cvar_ChatPrefix = CreateConVar("sm_nominate_chatprefix", "[MCE] ", "Chat prefix for all Nominations Extended related messages");
 
 	RegConsoleCmd("sm_nominate", Command_Nominate);
 	

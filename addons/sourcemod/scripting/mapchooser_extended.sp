@@ -53,7 +53,7 @@
 
 #pragma newdecls required
 
-#define MCE_VERSION "1.10.2"
+#define MCE_VERSION "1.11.0"
 
 enum RoundCounting
 {

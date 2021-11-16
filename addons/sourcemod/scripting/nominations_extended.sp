@@ -35,15 +35,13 @@
 #include <sourcemod>
 #include <mapchooser>
 #include "include/mapchooser_extended"
-#include <colors>
+#include <multicolors>
 #undef REQUIRE_PLUGIN
 #tryinclude <shavit>
-#tryinclude <kztimer>
-#tryinclude <surftimer>
 #pragma semicolon 1
 #pragma newdecls required
 
-#define MCE_VERSION "1.10.0"
+#define MCE_VERSION "1.11.0"
 
 public Plugin myinfo =
 {
@@ -73,8 +71,6 @@ ArrayList g_aTierMenus;
 char g_szChatPrefix[128];
 
 bool g_bBhopTimer = false;
-bool g_bKzTimer = false;
-bool g_bSurfTimer = false;
 
 #define MAPSTATUS_ENABLED (1<<0)
 #define MAPSTATUS_DISABLED (1<<1)
@@ -130,14 +126,6 @@ public void OnLibraryAdded(const char[] szName)
 	{
 		g_bBhopTimer = true;
 	}
-	if (StrEqual(szName, "KZTimer"))
-	{
-		g_bKzTimer = true;
-	}
-	if (StrEqual(szName, "surftimer"))
-	{
-		g_bSurfTimer = true;
-	}
 }
 
 public void OnLibraryRemoved(const char[] szName)
@@ -145,14 +133,6 @@ public void OnLibraryRemoved(const char[] szName)
 	if (StrEqual(szName, "shavit"))
 	{
 		g_bBhopTimer = false;
-	}
-	if (StrEqual(szName, "KZTimer"))
-	{
-		g_bKzTimer = false;
-	}
-	if (StrEqual(szName, "surftimer"))
-	{
-		g_bSurfTimer = false;
 	}
 }
 
@@ -270,7 +250,7 @@ public Action Command_Addmap(int client, int args)
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
 {
-	if (!client)
+	if (!client || IsChatTrigger())
 	{
 		return;
 	}
@@ -414,7 +394,7 @@ void ShowMatches(int client, char[] mapname)
 
 				char name[MAX_NAME_LENGTH];
 				GetClientName(client, name, sizeof(name));
-				PrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, lastMap);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, lastMap);
 				LogMessage("\"%L\" nominated %s", client, lastMap);
 			}	
 
@@ -602,7 +582,7 @@ void InitTierMenus(int min, int max)
 	for(int i = min; i <= max; i++)
 	{
 		Menu TierMenu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-		TierMenu.SetTitle("Nominate Menu\nTier \"%i\" Maps\n ", i);
+		TierMenu.SetTitle("Nominate Menu\nTier %i Maps\n ", i);
 		TierMenu.ExitBackButton = true;
 
 		g_aTierMenus.Push(TierMenu);
@@ -636,12 +616,12 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 			/* Don't need to check for InvalidMap because the menu did that already */
 			if (result == Nominate_AlreadyInVote)
 			{
-				PrintToChat(param1, "%s%t", g_szChatPrefix, "Map Already Nominated");
+				CPrintToChat(param1, "%s%t", g_szChatPrefix, "Map Already Nominated");
 				return 0;
 			}
 			else if (result == Nominate_VoteFull)
 			{
-				PrintToChat(param1, "%s%t", g_szChatPrefix, "Max Nominations");
+				CPrintToChat(param1, "%s%t", g_szChatPrefix, "Max Nominations");
 				return 0;
 			}
 			
@@ -649,11 +629,11 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
 
 			if (result == Nominate_Replaced)
 			{
-				PrintToChatAll("%s%t", g_szChatPrefix, "Map Nomination Changed", name, mapName);
+				CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nomination Changed", name, mapName);
 				return 0;	
 			}
 			
-			PrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, mapName);
+			CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, mapName);
 			LogMessage("\"%L\" nominated %s", param1, map);
 		}
 		
@@ -830,16 +810,6 @@ int GetTier(char[] mapname)
 		GetMapDisplayName(mapname, mapdisplay, sizeof(mapdisplay));
 		tier = Shavit_GetMapTier(mapdisplay);
 	}
-	
-	/*else if (g_bKzTimer)
-	{
-
-	}
-	
-	else if (g_bSurfTimer)
-	{
-
-	}*/
 	
 	else if (GetConVarBool(g_Cvar_DisplayName))
 	{

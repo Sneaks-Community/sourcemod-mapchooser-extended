@@ -46,14 +46,14 @@
 #pragma semicolon 1
 #include <sourcemod>
 #include <mapchooser>
-#include "include/mapchooser_extended"
+#include <mapchooser_extended>
 #include <nextmap>
 #include <sdktools>
-#include <colors>
+#include <multicolors>
 
 #pragma newdecls required
 
-#define MCE_VERSION "1.10.2"
+#define MCE_VERSION "1.11.0"
 
 enum RoundCounting
 {
@@ -655,7 +655,7 @@ public Action Timer_StartMapVote(Handle timer, Handle data)
 		}
 		else if (timerlocation == 2)
 		{
-			PrintToChatAll("%t", warningPhrase, warningTimeRemaining);
+			CPrintToChatAll("%t", warningPhrase, warningTimeRemaining);
 		}
 	}
 

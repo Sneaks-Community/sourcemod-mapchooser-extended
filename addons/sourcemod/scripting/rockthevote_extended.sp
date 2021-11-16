@@ -36,13 +36,13 @@
 #include <mapchooser>
 #include "include/mapchooser_extended"
 #include <nextmap>
-#include <colors>
+#include <multicolors>
 
 #pragma newdecls required
 
 #pragma semicolon 1
 
-#define MCE_VERSION "1.10.0"
+#define MCE_VERSION "1.11.0"
 
 public Plugin myinfo =
 {
@@ -204,7 +204,7 @@ public Action Command_RTV(int client, int args)
 
 public void OnClientSayCommand_Post(int client, const char[] command, const char[] sArgs)
 {
-	if (!g_CanRTV || !client)
+	if (!g_CanRTV || !client || IsChatTrigger())
 	{
 		return;
 	}

@@ -34,7 +34,7 @@
 
 #include <sourcemod>
 #include <mapchooser>
-#include "include/mapchooser_extended"
+#include <mapchooser_extended>
 #include <nextmap>
 #include <multicolors>
 

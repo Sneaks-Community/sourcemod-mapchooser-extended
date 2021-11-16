@@ -152,19 +152,9 @@ public OnPluginEnd()
 }
 */
 
-/*
-* Moved to OnConfigsExecuted due to cvar requirements
-public OnMapStart()
-{
-	BuildDownloadsTableAll();
-}
-*/
-
-public void OnConfigsExecuted()
+public void OnMapStart()
 {
 	g_DownloadAllSounds = g_Cvar_DownloadAllSounds.BoolValue;
-
-	SetSoundSetFromCVar();
 	
 	if (g_DownloadAllSounds)
 	{
@@ -174,6 +164,11 @@ public void OnConfigsExecuted()
 	{
 		BuildDownloadsTable(g_CurrentSoundSet);
 	}
+}
+
+public void OnConfigsExecuted()
+{
+	SetSoundSetFromCVar();
 }
 
 void SetSoundSetFromCVar()

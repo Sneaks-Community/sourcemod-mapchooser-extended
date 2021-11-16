@@ -582,7 +582,7 @@ void InitTierMenus(int min, int max)
 	for(int i = min; i <= max; i++)
 	{
 		Menu TierMenu = new Menu(Handler_MapSelectMenu, MENU_ACTIONS_DEFAULT|MenuAction_DrawItem|MenuAction_DisplayItem);
-		TierMenu.SetTitle("Nominate Menu\nTier \"%i\" Maps\n ", i);
+		TierMenu.SetTitle("Nominate Menu\nTier %i Maps\n ", i);
 		TierMenu.ExitBackButton = true;
 
 		g_aTierMenus.Push(TierMenu);

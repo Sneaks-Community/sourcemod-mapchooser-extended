@@ -186,7 +186,7 @@ stock void getMapName(const char[] map, char[] mapName, int size) {
 
 public Action Command_Addmap(int client, int args) {
     if (args < 1) {
-        CReplyToCommand(client, "[SNK.SRV] Usage: sm_nominate_addmap <mapname>");
+        CReplyToCommand(client, "%sUsage: sm_nominate_addmap <mapname>", g_szChatPrefix);
         return Plugin_Handled;
     }
 

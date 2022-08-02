@@ -75,7 +75,6 @@ public Plugin myinfo
         description = "Automated Map Voting with Extensions",
         version     = MCE_VERSION,
         url         = "https://forums.alliedmods.net/showthread.php?t=156974"
-    
 };
 
 /* Valve ConVars */
@@ -509,6 +508,7 @@ public Action Command_SetNextmap(int client, int args) {
 public Action Command_ReloadMaps(int client, int args) {
     InitializeOfficialMapList();
     InitializeMapNames();
+    return Plugin_Handled;
 }
 
 public void OnMapTimeLeftChanged() {
@@ -552,6 +552,7 @@ public Action Timer_StartWarningTimer(Handle timer) {
     if (!g_WarningInProgress || g_WarningTimer == INVALID_HANDLE) {
         SetupWarningTimer(WarningType_Vote);
     }
+    return Plugin_Handled;
 }
 
 public Action Timer_StartMapVote(Handle timer, Handle data) {
@@ -1122,7 +1123,7 @@ public int Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients, 
 
             CPrintToChatAll("%s%t", g_szChatPrefix, "Tie Vote", GetArraySize(mapList));
             SetupWarningTimer(WarningType_Revote, view_as<MapChange>(g_ChangeTime), mapList);
-            return;
+            return 0;
         } else if (highest_votes < required_votes) {
             g_HasVoteStarted = false;
 
@@ -1148,12 +1149,13 @@ public int Handler_MapVoteFinished(Handle menu, int num_votes, int num_clients, 
 
             CPrintToChatAll("%s%t", g_szChatPrefix, "Revote Is Needed", required_percent);
             SetupWarningTimer(WarningType_Revote, view_as<MapChange>(g_ChangeTime), mapList);
-            return;
+            return 0;
         }
     }
 
     // No revote needed, continue as normal.
     Handler_VoteFinishedGeneric(menu, num_votes, num_clients, client_info, num_items, item_info);
+    return 0;
 }
 
 // This is shared by NativeVotes now, but NV doesn't support Display or DisplayItem
@@ -1449,6 +1451,7 @@ public int Native_InitiateVote(Handle plugin, int numParams) {
 
     SetupWarningTimer(WarningType_Vote, when, inputarray);
     // InitiateVote(when, inputarray);
+    return 0;
 }
 
 public int Native_CanVoteStart(Handle plugin, int numParams) {
@@ -1467,7 +1470,7 @@ public int Native_GetExcludeMapList(Handle plugin, int numParams) {
     Handle array = view_as<Handle>(GetNativeCell(1));
 
     if (array == INVALID_HANDLE) {
-        return;
+        return 0;
     }
     int size = g_OldMapList.Length;
     char map[PLATFORM_MAX_PATH];
@@ -1477,7 +1480,7 @@ public int Native_GetExcludeMapList(Handle plugin, int numParams) {
         PushArrayString(array, map);
     }
 
-    return;
+    return 0;
 }
 
 public int Native_GetNominatedMapList(Handle plugin, int numParams) {
@@ -1485,7 +1488,7 @@ public int Native_GetNominatedMapList(Handle plugin, int numParams) {
     ArrayList ownerarray = view_as<ArrayList>(GetNativeCell(2));
 
     if (maparray == null)
-        return;
+        return 0;
 
     char map[PLATFORM_MAX_PATH];
 
@@ -1500,7 +1503,7 @@ public int Native_GetNominatedMapList(Handle plugin, int numParams) {
         }
     }
 
-    return;
+    return 0;
 }
 
 // Functions new to Mapchooser Extended
@@ -1617,9 +1620,9 @@ stock void InitializeMapNames() {
     delete SMC;
 }
 
-public SMCResult NewSection(Handle smc, const char[] name, bool opt_quotes) { }
+public SMCResult NewSection(Handle smc, const char[] name, bool opt_quotes) { return SMCParse_Halt; }
 
-public SMCResult EndSection(Handle smc) { }
+public SMCResult EndSection(Handle smc) { return SMCParse_Halt; }
 
 public SMCResult KeyValue(Handle smc, const char[] key, const char[] value, bool key_quotes, bool value_quotes) {
     if (g_tempMapFile == 0) {
@@ -1631,6 +1634,7 @@ public SMCResult KeyValue(Handle smc, const char[] key, const char[] value, bool
         PushArrayString(g_MapNameUFilter, key);
         PushArrayString(g_MapNameUReplace, value);
     }
+    return SMCParse_Halt;
 }
 
 stock void InitializeOfficialMapList() {
@@ -1745,6 +1749,7 @@ stock void AddMapItem(const char[] map) {
 
 stock int GetMapItem(Handle menu, int position, char[] map, int mapLen) {
     GetMenuItem(menu, position, map, mapLen);
+    return 0;
 }
 
 stock int AddExtendToMenu(Handle menu, MapChange when) {
@@ -1756,6 +1761,7 @@ stock int AddExtendToMenu(Handle menu, MapChange when) {
     } else if (g_Cvar_Extend.BoolValue && g_Extends < g_Cvar_Extend.IntValue) {
         AddMenuItem(menu, VOTE_EXTEND, "Extend Map");
     }
+    return 0;
 }
 
 stock void ExtendMap() {

@@ -232,6 +232,8 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
     }
 
     if (strcmp(sArgs, "nominate", false) == 0) {
+        if (!IsNominateAllowed(client))
+            return;
         ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
 
         if (GetConVarBool(g_Cvar_EnhancedMenu)) {
@@ -279,7 +281,7 @@ void ShowMatches(int client, char[] mapname) {
 
     ArrayList excludeMaps = CreateArray(ByteCountToCells(PLATFORM_MAX_PATH));
     char currentMap[32];
-    
+
     GetExcludeMapList(excludeMaps);
 
     GetCurrentMap(currentMap, sizeof(currentMap));

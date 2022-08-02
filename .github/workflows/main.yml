@@ -1,0 +1,24 @@
+name: SourceMod Workflow
+
+on:
+  push:
+    branches:
+    - '*'
+  pull_request:
+    branches:
+    - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Download sourcemod
+      run: |
+        wget "http://www.sourcemod.net/latest.php?version=1.10&os=linux" -O sourcemod.tar.gz
+        tar -xzf sourcemod.tar.gz
+        cd addons/sourcemod/scripting
+    - name: Give permissions
+      run: chmod +x spcomp
+    - name: Compile the plugin
+      run: for file in .; do spcomp -E $file; done

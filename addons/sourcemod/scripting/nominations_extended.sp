@@ -232,9 +232,9 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
     }
 
     if (strcmp(sArgs, "nominate", false) == 0) {
+        ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
         if (!IsNominateAllowed(client))
             return;
-        ReplySource old = SetCmdReplySource(SM_REPLY_TO_CHAT);
 
         if (GetConVarBool(g_Cvar_EnhancedMenu)) {
             OpenTiersMenu(client);

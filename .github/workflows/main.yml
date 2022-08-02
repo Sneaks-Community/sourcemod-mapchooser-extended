@@ -4,9 +4,11 @@ on:
   push:
     branches:
     - '*'
+    - 'map-names-tiers'
   pull_request:
     branches:
     - 'main'
+    - 'map-names-tiers'
 
 jobs:
   build:

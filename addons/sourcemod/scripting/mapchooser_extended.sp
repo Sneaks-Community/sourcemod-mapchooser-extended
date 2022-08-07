@@ -386,18 +386,25 @@ public void OnMapStart() {
     } else if (strcmp(folder, "csgo") == 0 && g_Cvar_GameType.IntValue == GameType_GunGame && g_Cvar_GameMode.IntValue == GunGameMode_ArmsRace) {
         g_RoundCounting = RoundCounting_ArmsRace;
     }
+    char map[PLATFORM_MAX_PATH], latestMap[PLATFORM_MAX_PATH];
+    GetCurrentMap(map, PLATFORM_MAX_PATH);
+
+    if (g_OldMapList.Length > 0) {
+        g_OldMapList.GetString(g_OldMapList.Length - 1, latestMap, PLATFORM_MAX_PATH);
+        if (StrEqual(map, latestMap))
+            return;
+    }
 
     if (g_OldMapList.Length + 1 > g_Cvar_ExcludeMaps.IntValue) {
         Handle file = OpenFile("recent_maps.txt", "w");
-        char map[PLATFORM_MAX_PATH];
+        char tMap[PLATFORM_MAX_PATH];
         for (int i = 1; i < g_OldMapList.Length; i++) {
-            g_OldMapList.GetString(i, map, sizeof(map));
-            WriteFileLine(file, map);
+            g_OldMapList.GetString(i, tMap, sizeof(tMap));
+            WriteFileLine(file, tMap);
         }
         delete file;
     }
-    char map[PLATFORM_MAX_PATH];
-    GetCurrentMap(map, PLATFORM_MAX_PATH);
+
     Handle file = OpenFile("recent_maps.txt", "a+");
     WriteFileLine(file, map);
     delete file;

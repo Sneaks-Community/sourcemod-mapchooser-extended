@@ -345,20 +345,6 @@ public void OnPluginStart() {
     g_MapVoteWarningStartForward = CreateGlobalForward("OnMapVoteWarningStart", ET_Ignore);
     g_MapVoteWarningTickForward  = CreateGlobalForward("OnMapVoteWarningTick", ET_Ignore, Param_Cell);
     g_MapVoteRunoffStartForward  = CreateGlobalForward("OnMapVoteRunnoffWarningStart", ET_Ignore);
-
-    char map[PLATFORM_MAX_PATH];
-    Handle file = OpenFile("recent_maps.txt", "r");
-    if (file == null)
-        return;
-    for (int i = 0; i < 500; i++) {
-        if (!ReadFileLine(file, map, sizeof(map)))
-            break;
-        map[strlen(map) - 1] = '\0';
-        g_OldMapList.PushString(map);
-        if (g_OldMapList.Length > g_Cvar_ExcludeMaps.IntValue)
-            g_OldMapList.Erase(0);
-    }
-    delete file;
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -418,6 +404,22 @@ public void OnMapStart() {
 }
 
 public void OnConfigsExecuted() {
+    if (g_OldMapList.Length == 0) {
+        char map[PLATFORM_MAX_PATH];
+        Handle file = OpenFile("recent_maps.txt", "r");
+        if (file == null)
+            return;
+        for (int i = 0; i < 500; i++) {
+            if (!ReadFileLine(file, map, sizeof(map)))
+                break;
+            map[strlen(map) - 1] = '\0';
+            g_OldMapList.PushString(map);
+            if (g_OldMapList.Length > g_Cvar_ExcludeMaps.IntValue)
+                g_OldMapList.Erase(0);
+        }
+        delete file;
+    }
+
     if (ReadMapList(g_MapList, g_mapFileSerial, "mapchooser", MAPLIST_FLAG_CLEARARRAY | MAPLIST_FLAG_MAPSFOLDER) != null)
 
     {

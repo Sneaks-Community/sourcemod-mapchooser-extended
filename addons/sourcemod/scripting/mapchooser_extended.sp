@@ -348,12 +348,14 @@ public void OnPluginStart() {
 
     char map[PLATFORM_MAX_PATH];
     Handle file = OpenFile("recent_maps.txt", "r");
-    for (int i = 0; i > g_Cvar_ExcludeMaps.IntValue; i++) {
+    if (file == null)
+        return;
+    for (int i = 0; i < 500; i++) {
         if (!ReadFileLine(file, map, sizeof(map)))
             break;
+        map[strlen(map) - 1] = '\0';
         if (g_OldMapList.Length > g_Cvar_ExcludeMaps.IntValue)
             g_OldMapList.Erase(0);
-
         g_OldMapList.PushString(map);
     }
     delete file;

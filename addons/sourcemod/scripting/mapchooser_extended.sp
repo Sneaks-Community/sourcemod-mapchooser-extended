@@ -59,22 +59,22 @@ enum {
     GameType_GunGame  = 1,
     GameType_Training = 2,
     GameType_Custom   = 3,
-}
+};
 
 enum {
     GunGameMode_ArmsRace   = 0,
     GunGameMode_Demolition = 1,
     GunGameMode_DeathMatch = 2,
-}
+};
 
-public Plugin myinfo
-  =
+public Plugin myinfo =
 {
-        name        = "MapChooser Extended",
-        author      = "Powerlord, Zuko, and AlliedModders LLC",
-        description = "Automated Map Voting with Extensions",
-        version     = MCE_VERSION,
-        url         = "https://forums.alliedmods.net/showthread.php?t=156974"
+    name        = "MapChooser Extended",
+    author      = "Powerlord, Zuko, and AlliedModders LLC",
+    description = "Automated Map Voting with Extensions",
+    version     = MCE_VERSION,
+    url         = "https://forums.alliedmods.net/showthread.php?t=156974"
+
 };
 
 /* Valve ConVars */
@@ -185,7 +185,7 @@ int g_ObjectiveEnt  = -1;
 enum WarningType {
     WarningType_Vote,
     WarningType_Revote,
-}
+};
 
 #define VOTE_EXTEND     "##extend##"
 #define VOTE_DONTCHANGE "##dontchange##"
@@ -196,8 +196,7 @@ enum WarningType {
 #define LINE_SPACER          "##linespacer##"
 #define FAILURE_TIMER_LENGTH 5
 
-public void
-OnPluginStart() {
+public void OnPluginStart() {
     LoadTranslations("mapchooser_extended.phrases");
     LoadTranslations("basevotes.phrases");
     LoadTranslations("common.phrases");
@@ -346,6 +345,18 @@ OnPluginStart() {
     g_MapVoteWarningStartForward = CreateGlobalForward("OnMapVoteWarningStart", ET_Ignore);
     g_MapVoteWarningTickForward  = CreateGlobalForward("OnMapVoteWarningTick", ET_Ignore, Param_Cell);
     g_MapVoteRunoffStartForward  = CreateGlobalForward("OnMapVoteRunnoffWarningStart", ET_Ignore);
+
+    char map[PLATFORM_MAX_PATH];
+    Handle file = OpenFile("recent_maps.txt", "r");
+    for (int i = 0; i > g_Cvar_ExcludeMaps.IntValue; i++) {
+        if (!ReadFileLine(file, map, sizeof(map)))
+            break;
+        if (g_OldMapList.Length > g_Cvar_ExcludeMaps.IntValue)
+            g_OldMapList.Erase(0);
+
+        g_OldMapList.PushString(map);
+    }
+    delete file;
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -387,6 +398,21 @@ public void OnMapStart() {
     } else if (strcmp(folder, "csgo") == 0 && g_Cvar_GameType.IntValue == GameType_GunGame && g_Cvar_GameMode.IntValue == GunGameMode_ArmsRace) {
         g_RoundCounting = RoundCounting_ArmsRace;
     }
+
+    if (g_OldMapList.Length + 1 > g_Cvar_ExcludeMaps.IntValue) {
+        DeleteFile("recent_maps.txt");
+        Handle file = OpenFile("recent_maps.txt", "w");
+        char map[PLATFORM_MAX_PATH];
+        for (int i = 1; i < g_OldMapList.Length; i++) {
+            g_OldMapList.GetString(i, map, sizeof(map));
+            WriteFileLine(file, map);
+        }
+    }
+    char map[PLATFORM_MAX_PATH];
+    GetCurrentMap(map, PLATFORM_MAX_PATH);
+    Handle file = OpenFile("recent_maps.txt", "a+");
+    WriteFileLine(file, map);
+    delete file;
 }
 
 public void OnConfigsExecuted() {

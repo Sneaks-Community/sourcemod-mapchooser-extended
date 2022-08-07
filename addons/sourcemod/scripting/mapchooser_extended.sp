@@ -354,9 +354,9 @@ public void OnPluginStart() {
         if (!ReadFileLine(file, map, sizeof(map)))
             break;
         map[strlen(map) - 1] = '\0';
+        g_OldMapList.PushString(map);
         if (g_OldMapList.Length > g_Cvar_ExcludeMaps.IntValue)
             g_OldMapList.Erase(0);
-        g_OldMapList.PushString(map);
     }
     delete file;
 }
@@ -402,13 +402,13 @@ public void OnMapStart() {
     }
 
     if (g_OldMapList.Length + 1 > g_Cvar_ExcludeMaps.IntValue) {
-        DeleteFile("recent_maps.txt");
         Handle file = OpenFile("recent_maps.txt", "w");
         char map[PLATFORM_MAX_PATH];
         for (int i = 1; i < g_OldMapList.Length; i++) {
             g_OldMapList.GetString(i, map, sizeof(map));
             WriteFileLine(file, map);
         }
+        delete file;
     }
     char map[PLATFORM_MAX_PATH];
     GetCurrentMap(map, PLATFORM_MAX_PATH);

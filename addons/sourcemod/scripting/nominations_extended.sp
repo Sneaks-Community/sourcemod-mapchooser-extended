@@ -35,6 +35,7 @@
 #include <sourcemod>
 #include <mapchooser>
 #include <mapchooser_extended>
+#include <nominations_extended>
 #include <multicolors>
 #undef REQUIRE_PLUGIN
 #tryinclude < shavit>
@@ -56,6 +57,8 @@ Handle g_Cvar_ExcludeOld     = INVALID_HANDLE;
 Handle g_Cvar_ExcludeCurrent = INVALID_HANDLE;
 Handle g_Cvar_DisplayName    = INVALID_HANDLE;
 Handle g_Cvar_EnhancedMenu   = INVALID_HANDLE;
+
+Handle g_NominationsCreated = INVALID_HANDLE;
 
 ConVar g_Cvar_MinTier;
 ConVar g_Cvar_MaxTier;
@@ -100,6 +103,8 @@ public void OnPluginStart() {
     g_Cvar_MinTier        = CreateConVar("sm_nominate_min_tier", "1", "The minimum tier to show on the enhanced menu", _, true, 0.0, true, 10.0);
     g_Cvar_MaxTier        = CreateConVar("sm_nominate_max_tier", "10", "The maximum tier to show on the enhanced menu", _, true, 0.0, true, 10.0);
     g_Cvar_ChatPrefix     = CreateConVar("sm_nominate_chatprefix", "[MCE] ", "Chat prefix for all Nominations Extended related messages");
+
+    g_NominationsCreated = CreateGlobalForward("OnNominationCreated", ET_Ignore, Param_String, Param_Cell);
 
     RegConsoleCmd("sm_nominate", Command_Nominate);
 
@@ -335,12 +340,7 @@ void ShowMatches(int client, char[] mapname) {
                     CReplyToCommand(client, "%s%t", g_szChatPrefix, "Map Already Nominated");
                 }
             } else {
-                SetTrieValue(g_mapTrie, lastMap, MAPSTATUS_DISABLED | MAPSTATUS_EXCLUDE_NOMINATED);
-
-                char name[MAX_NAME_LENGTH];
-                GetClientName(client, name, sizeof(name));
-                CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, lastMap);
-                LogMessage("\"%L\" nominated %s", client, lastMap);
+                AddNomination(client, lastMap);
             }
 
             delete SubMapMenu;
@@ -349,6 +349,17 @@ void ShowMatches(int client, char[] mapname) {
             DisplayMenu(SubMapMenu, client, MENU_TIME_FOREVER);
         }
     }
+}
+
+void AddNomination(int client, char[] map, bool replaced = true) {
+    Call_StartForward(g_NominationsCreated);
+    Call_PushString(map);
+    Call_PushCell(client);
+    Call_Finish();
+
+    SetTrieValue(g_mapTrie, map, MAPSTATUS_DISABLED | MAPSTATUS_EXCLUDE_NOMINATED);
+    CPrintToChatAll("%N%t", g_szChatPrefix, replaced ? "Map Nomination Changed" : "Map Nominated", client, map);
+    LogMessage("\"%L\" nominated %s", client, map);
 }
 
 void AttemptNominate(int client) {
@@ -535,15 +546,7 @@ public int Handler_MapSelectMenu(Menu menu, MenuAction action, int param1, int p
                 return 0;
             }
 
-            SetTrieValue(g_mapTrie, map, MAPSTATUS_DISABLED | MAPSTATUS_EXCLUDE_NOMINATED);
-
-            if (result == Nominate_Replaced) {
-                CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nomination Changed", name, mapName);
-                return 0;
-            }
-
-            CPrintToChatAll("%s%t", g_szChatPrefix, "Map Nominated", name, mapName);
-            LogMessage("\"%L\" nominated %s", param1, map);
+            AddNomination(param1, map, true);
         }
 
         case MenuAction_DrawItem: {

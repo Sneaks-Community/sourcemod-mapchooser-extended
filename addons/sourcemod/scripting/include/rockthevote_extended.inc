@@ -47,7 +47,7 @@ forward void OnRockTheVote(int client);
 /**
  * Called when the vote passes to switch to a new map
  */
-forward void OnVoteRocked(const char[] newmap);
+forward void OnVoteRocked();
 
 public SharedPlugin __pl_rockthevote_extended = 
 {

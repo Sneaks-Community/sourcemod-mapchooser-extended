@@ -91,7 +91,7 @@ public void OnPluginStart() {
     g_Cvar_ChatPrefix        = CreateConVar("sm_rtv_chatprefix", "[MCE] ", "Chat prefix for all RTV related messages");
 
     g_OnRTVForward = CreateGlobalForward("OnRockTheVote", ET_Ignore, Param_Cell);
-    g_OnRockedForward = CreateGlobalForward("OnVoteRocked", ET_Ignore, Param_String);
+    g_OnRockedForward = CreateGlobalForward("OnVoteRocked", ET_Ignore);
 
     RegConsoleCmd("sm_rtv", Command_RTV);
 
@@ -255,9 +255,6 @@ void StartRTV() {
         /* Change right now then */
         char map[PLATFORM_MAX_PATH];
         if (GetNextMap(map, sizeof(map))) {
-            Call_StartForward(g_OnRockedForward);
-            Call_PushString(map);
-            Call_Finish();
             if (GetConVarBool(g_Cvar_DisplayName)) {
                 char mapName[PLATFORM_MAX_PATH];
                 GetMapName(map, mapName, sizeof(mapName));
@@ -281,6 +278,9 @@ void StartRTV() {
 
         ResetRTV();
 
+
+        Call_StartForward(g_OnRockedForward);
+        Call_Finish();
         g_RTVAllowed = false;
         CreateTimer(g_Cvar_Interval.FloatValue, Timer_DelayRTV, _, TIMER_FLAG_NO_MAPCHANGE);
     }

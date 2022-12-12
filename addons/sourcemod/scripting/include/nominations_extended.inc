@@ -40,8 +40,7 @@
 #include <mapchooser>
 
 /**
- * Called whenever warning timer starts
- * 
+ * Called when a user nominates a map
  */
 forward void OnNominationCreated(const char[] map, int owner);
 

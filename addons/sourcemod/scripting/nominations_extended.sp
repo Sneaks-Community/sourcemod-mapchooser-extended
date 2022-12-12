@@ -351,7 +351,7 @@ void ShowMatches(int client, char[] mapname) {
     }
 }
 
-void AddNomination(int client, char[] map, bool replaced = true) {
+void AddNomination(int client, char[] map, bool replaced = false) {
     Call_StartForward(g_NominationsCreated);
     Call_PushString(map);
     Call_PushCell(client);

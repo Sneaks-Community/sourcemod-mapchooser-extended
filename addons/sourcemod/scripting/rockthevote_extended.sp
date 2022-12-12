@@ -62,6 +62,8 @@ ConVar g_Cvar_RTVPostVoteAction;
 ConVar g_Cvar_DisplayName;
 ConVar g_Cvar_ChatPrefix;
 
+Handle g_RTVForward          = INVALID_HANDLE;
+
 bool g_CanRTV                = false; // True if RTV loaded maps and is active.
 bool g_RTVAllowed            = false; // True if RTV is available to players. Used to delay rtv votes.
 int g_Voters                 = 0;     // Total voters connected. Doesn't include fake clients.
@@ -86,6 +88,8 @@ public void OnPluginStart() {
     g_Cvar_RTVPostVoteAction = CreateConVar("sm_rtv_postvoteaction", "0", "What to do with RTV's after a mapvote has completed. 0 - Allow, success = instant change, 1 - Deny", _, true, 0.0, true, 1.0);
     g_Cvar_DisplayName       = CreateConVar("sm_rtv_displayname", "1", "Display the Map's custom name, instead of the raw map name", _, true, 0.0, true, 1.0);
     g_Cvar_ChatPrefix        = CreateConVar("sm_rtv_chatprefix", "[MCE] ", "Chat prefix for all RTV related messages");
+
+    g_RTVForward = CreateGlobalForward("OnRockTheVote", ET_Ignore, Param_Cell);
 
     RegConsoleCmd("sm_rtv", Command_RTV);
 
@@ -217,6 +221,10 @@ void AttemptRTV(int client) {
         CReplyToCommand(client, "%s%t", g_szChatPrefix, "Already Voted", g_Votes, g_VotesNeeded);
         return;
     }
+
+    Call_StartForward(g_RTVForward);
+    Call_PushCell(client);
+    Call_Finish();
 
     char name[MAX_NAME_LENGTH];
     GetClientName(client, name, sizeof(name));

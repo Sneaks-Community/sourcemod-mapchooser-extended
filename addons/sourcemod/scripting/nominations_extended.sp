@@ -118,6 +118,11 @@ public void OnPluginStart() {
     g_mapTrie = CreateTrie();
 }
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int maxlength) {
+    RegPluginLibrary("nominations");
+    return APLRes_Success;
+}
+
 public void OnAllPluginsLoaded() {
     // This is an MCE cvar... this plugin requires MCE to be loaded.  Granted, this plugin SHOULD have an MCE dependency.
     g_Cvar_MarkCustomMaps = FindConVar("mce_markcustommaps");

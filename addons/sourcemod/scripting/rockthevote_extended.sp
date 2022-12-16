@@ -104,6 +104,11 @@ public void OnPluginStart() {
     AutoExecConfig(true, "rtv");
 }
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int maxlength) {
+    RegPluginLibrary("rockthevote");
+    return APLRes_Success;
+}
+
 public void OnMapStart() {
     g_Voters      = 0;
     g_Votes       = 0;
